@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 def rot(angle):
     return np.array([[ np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])

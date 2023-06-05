@@ -1,8 +1,8 @@
 import numpy as np
 
-from geometry import Rect
+from common import Rect
 from dynamic_systems import Unicycle
-from controllers import PFController, Path, Circle
+from controllers import PFController, SplinePath, Circle
 
 ########################################### Configure and create robots ####################################################
 pos_offset = 1.0
@@ -16,13 +16,11 @@ robots = [ robot1, robot2, robot3 ]
 ################################################### Define paths ###########################################################
 sample_time = 0.005
 
-circle1_params = { "center": [0.0, 0.0], "radius": 10.0 }
-circle2_params = { "center": [0.0, 0.0], "radius": 6.0 }
-circle3_params = { "center": [0.0, 0.0], "radius": 3.0 }
+path1_params = { "degree": 3, "points": np.array([pts_x, pts_y]).T, "orientation": "left" }
 
-path1 = Path( function=Circle, params=circle1_params, init_path_state=[0.0] )
-path2 = Path( function=Circle, params=circle2_params, init_path_state=[0.0] )
-path3 = Path( function=Circle, params=circle3_params, init_path_state=[0.0] )
+path1 = SplinePath( params=path1_params, init_path_state=[0.0] )
+path2 = SplinePath( params=path2_params, init_path_state=[0.0] )
+path3 = SplinePath( params=path3_params, init_path_state=[0.0] )
 
 paths = [ path1, path2, path3 ]
 ############################################################################################################################

@@ -69,7 +69,7 @@ class Plot2DSimulation():
 
             self.robot_trajectories.append( robot_traj )
             self.robot_geometries.append( robot_geometry )
-            self.path_circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
+            # self.path_circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
 
         self.path_graphs = []
         for k in range(self.num_paths):
@@ -93,7 +93,7 @@ class Plot2DSimulation():
             for k in range(self.numpoints):
                 gamma = k*self.path_length/self.numpoints
                 # self.paths[i].set_path_state(gamma)
-                pos, _ = self.paths[i].get_path_point(gamma)
+                pos = self.paths[i].get_path_point(gamma)
                 xpath.append(pos[0])
                 ypath.append(pos[1])
             self.path_graphs[i].set_data(xpath, ypath)
@@ -131,10 +131,10 @@ class Plot2DSimulation():
 
             # self.paths[k].set_path_state(self.gamma_logs[k][i])
             gamma = self.gamma_logs[k][i]
-            pos, _ = self.paths[k].get_path_point(gamma)
+            pos = self.paths[k].get_path_point(gamma)
 
             self.virtual_pts[k].set_data(pos[0], pos[1])
-            self.ax.add_patch(self.path_circles[k])
+            # self.ax.add_patch(self.path_circles[k])
 
         # Add artists
         graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.virtual_pts

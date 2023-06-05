@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseButton
 
 
@@ -21,7 +20,7 @@ class SplineEditor:
         self.plot_params = plot_params
 
         self.path = spline_path
-        x, y = self.path.params["points"][:,0], self.path.params["points"][:,1]
+        x, y = self.path.points[:,0], self.path.points[:,1]
         self.line, = self.ax.plot(x, y, marker='o', markerfacecolor='r', animated=True)
 
         self._ind = None  # the active vertex
@@ -38,7 +37,7 @@ class SplineEditor:
         Return the index of the point closest to the event position or *None*
         if no point is within ``self.epsilon`` to the event position.
         """
-        xt, yt = self.path.params["points"][:,0], self.path.params["points"][:,1]
+        xt, yt = self.path.points[:,0], self.path.points[:,1]
         d = np.sqrt((xt - event.xdata)**2 + (yt - event.ydata)**2)
         ind = d.argmin()
         return ind if d[ind] < self.epsilon else None
@@ -74,7 +73,7 @@ class SplineEditor:
             self.showverts = not self.showverts
             self.line.set_visible(self.showverts)
             if not self.showverts:
-                self._ind = None
+                self._ind = None            
         self.canvas.draw()
 
     def on_mouse_move(self, event):
@@ -86,9 +85,10 @@ class SplineEditor:
                 or not self.showverts):
             return
 
-        pts = self.path.params["points"]
+        pts = self.path.points
         pts[self._ind,0], pts[self._ind,1] = event.xdata, event.ydata
-        self.path.params["points"] = pts
+
+        self.path.set_points(pts)
         x, y = pts[:,0], pts[:,1]
         self.line.set_data(x, y)
 

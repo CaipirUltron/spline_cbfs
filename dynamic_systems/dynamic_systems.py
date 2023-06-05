@@ -2,7 +2,7 @@ import math
 import numpy as np
 from scipy.integrate import ode
 from abc import ABC, abstractmethod
-from geometry import Rect
+from common import Rect
 
 class DynamicSystem(ABC):
     '''
