@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.patches import Rectangle
-from matplotlib.transforms import Affine2D
+
 
 class Plot2DSimulation():
 
@@ -47,7 +47,7 @@ class Plot2DSimulation():
         self.numpoints = plot_config["numpoints"]
 
         # Initalize graphical objects
-        self.time_text = self.ax.text(plot_config["axeslim"][1]-7.5, plot_config["axeslim"][3]-1.0, str("Time = "))
+        self.time_text = self.ax.text(plot_config["axeslim"][1]-10, plot_config["axeslim"][3]-3, str("Time = "))
 
         self.robot_positions, self.robot_trajectories, self.robot_geometries, self.path_circles, self.virtual_pts = [], [], [], [], []
         for k in range(self.num_robots):

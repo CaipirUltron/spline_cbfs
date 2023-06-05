@@ -14,17 +14,19 @@ pts_y = [-3, 2, 5, 0, 5, 2, -3]
 pts = np.array([pts_x, pts_y]).T
 spline_params = { "degree": 3, "points": pts, "orientation": 'left' }
 
-# num_points = 10
-# spline_params = { "degree": 3, "points": np.random.randint( -10, 10, size=(num_points, 2) ) }
-
 # Or edit from a previously saved configuration
-if len(sys.argv) > 1:
+if len(sys.argv) > 2:
     loaded = True
-    file_name = sys.argv[1].replace(".json","")
-    with open(file_name + ".json") as file:
-        print("Loading test: " + file_name + ".json")
-        spline_params = json.load(file)
-        spline_params["points"] = np.array( spline_params["points"] )
+    sim_name = sys.argv[1].replace(".json","")
+    spline_name = sys.argv[2].replace(".json","")
+    locations = [ "simulations/"+sim_name+"/paths/"+spline_name+".json", "simulations/"+sim_name+"/barriers/"+spline_name+".json" ]
+    for location in locations:
+        with open(location,'r') as file:
+            print(file)
+            print("Loading test: " + sim_name + ".json")
+            spline_params = json.load(file)
+            spline_params["points"] = np.array( spline_params["points"] )
+            break
 
 # Generate spline pathy
 spline_path = SplinePath( params=spline_params, init_path_state=[0.0] )
@@ -65,6 +67,6 @@ else:
         file_name = str(input())
 
 if save:
-    with open(file_name+".json", "w") as file:
-        print("Saving spline at " + file_name + ".json...")
+    with open(location, "w") as file:
+        print("Saving spline at "+location)
         json.dump(spline_params, file, indent=4)

@@ -5,14 +5,14 @@ The controller is based on the CLF-CBF framework, and is able to steers the vehi
 
 **Running instructions:** 
 
-$ *python3 simulation.py <example.py in ./scenarios>: **runs simulation**.
+$ *python3 simulation.py simulationX: **runs simulationX, located on <simulation.py in ./simulations/simulationX>**.
 
-$ *python3 animation.py <example.json in ./>: **animates previously saved simulation**.
+$ *python3 animation.py simulationX: <simulationX.json in ./>: **animates previously saved simulation**.
 
 
 It is also possible to edit splines with **edit_spline.py**:
 
-$ *python3 edit_spline.py <spline_file.json in ./>: **opens spline editor for a given previously saved spline configuration**.
+$ *python3 edit_spline.py simulationX splineY: **opens spline editor for a splineY in simulationX**.
 
 
 **Enjoy!**

@@ -252,3 +252,6 @@ class SplinePath:
         dh = 0.0
 
         return h, dh
+    
+class SplineBarrier(SplinePath):
+    pass

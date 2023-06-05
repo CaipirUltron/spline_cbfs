@@ -6,7 +6,7 @@ from graphics import Plot2DSimulation
 
 # Load simulation file
 simulation_file = sys.argv[1].replace(".json","")
-sim = importlib.import_module("scenarios."+simulation_file, package=None)
+sim = importlib.import_module("simulations."+simulation_file+".simulation", package=None)
 
 try:
     with open(simulation_file + ".json") as file:
