@@ -6,7 +6,7 @@ from matplotlib.patches import Rectangle
 
 class Plot2DSimulation():
 
-    def __init__(self, robots, paths, logs, **kwargs):
+    def __init__(self, robots, paths, barriers, logs, **kwargs):
         '''
         Initializes graphical objects.
         '''        
@@ -22,10 +22,12 @@ class Plot2DSimulation():
         self.colors = [ 'c', 'm', 'g' ]
         self.robots = robots
         self.paths = paths
+        self.barriers = barriers
 
         self.num_robots = len(self.robots)
         self.num_paths = len(self.paths)
-
+        self.num_barriers = len(self.barriers)
+        
         # Initialize plot objects
         self.fig, self.ax = plt.subplots()
         self.ax.set_title('Traffic Control with CLF-CBFs')
@@ -49,7 +51,7 @@ class Plot2DSimulation():
         # Initalize graphical objects
         self.time_text = self.ax.text(plot_config["axeslim"][1]-10, plot_config["axeslim"][3]-3, str("Time = "))
 
-        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.path_circles, self.virtual_pts = [], [], [], [], []
+        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.circles, self.virtual_pts = [], [], [], [], []
         for k in range(self.num_robots):
             robot_pos, = self.ax.plot([],[],lw=1,color='black',marker='o',markersize=4.0)
             self.robot_positions.append(robot_pos)
@@ -69,12 +71,17 @@ class Plot2DSimulation():
 
             self.robot_trajectories.append( robot_traj )
             self.robot_geometries.append( robot_geometry )
-            # self.path_circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
+            self.circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
 
         self.path_graphs = []
         for k in range(self.num_paths):
             i_graph, = self.ax.plot([],[], linestyle='dashed', lw=0.8, alpha=0.8, color=self.colors[k])
             self.path_graphs.append( i_graph )
+
+        self.barrier_graphs = []
+        for k in range(self.num_barriers):
+            i_graph, = self.ax.plot([],[], lw=1.5, alpha=1.0, color='r')
+            self.barrier_graphs.append( i_graph )
 
         self.animation = None
 
@@ -99,7 +106,17 @@ class Plot2DSimulation():
             self.path_graphs[i].set_data(xpath, ypath)
             self.virtual_pts[i].set_data([],[])
 
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.virtual_pts
+        for i in range(self.num_barriers):
+            xpath, ypath = [], []
+            for k in range(self.numpoints):
+                gamma = k*self.path_length/self.numpoints
+                # self.paths[i].set_path_state(gamma)
+                pos = self.barriers[i].get_path_point(gamma)
+                xpath.append(pos[0])
+                ypath.append(pos[1])
+            self.barrier_graphs[i].set_data(xpath, ypath)
+
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.circles
         graphical_elements.append(self.time_text)
 
         return graphical_elements
@@ -137,7 +154,7 @@ class Plot2DSimulation():
             # self.ax.add_patch(self.path_circles[k])
 
         # Add artists
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.virtual_pts
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
 
         return graphical_elements

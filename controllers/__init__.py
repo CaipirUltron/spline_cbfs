@@ -1,2 +1,2 @@
-from .path import SplinePath, Line, Circle, BSpline
+from .path import SplinePath, SplineBarrier, Line, Circle, BSpline
 from .controller import PFController

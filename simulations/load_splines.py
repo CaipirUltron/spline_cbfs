@@ -1,6 +1,6 @@
 import os, sys, json
 import numpy as np
-from controllers import SplinePath
+from controllers import SplinePath, SplineBarrier
 
 simulation_config = sys.argv[1].replace(".json","")
 
@@ -23,7 +23,7 @@ for path_name in path_names:
 barrier_params = []
 barrier_names = os.listdir("simulations/"+simulation_config+"/barriers")
 for barrier_name in barrier_names:
-    with open("simulations/"+simulation_config+"/paths/"+barrier_name) as file:
+    with open("simulations/"+simulation_config+"/barriers/"+barrier_name) as file:
         print("Loading: " + barrier_name)
         barrier_params.append( json.load(file) )
         pts = np.array( barrier_params[-1]["points"] )
@@ -44,4 +44,4 @@ barriers = []
 print("Available barriers: ")
 for barrier_param in barrier_params:
     print(barrier_params)
-    barriers.append( SplinePath( params=barrier_param, init_path_state=[0.0] ) )
+    barriers.append( SplineBarrier( params=barrier_param, init_path_state=[0.0], threshold=0.3 ) )

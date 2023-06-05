@@ -19,7 +19,7 @@ for step in range(0, num_steps):
     # CPF controller for the robots
     robot_controls = []
     for k in range(len(sim_module.robots)):
-        u = sim_module.controllers[k].get_control(sim_module.robots, sim_module.paths)
+        u = sim_module.controllers[k].get_control()
         robot_controls.append(u)
         sim_module.paths[k] = sim_module.controllers[k].get_path()
 

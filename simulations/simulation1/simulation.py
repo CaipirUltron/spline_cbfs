@@ -9,11 +9,9 @@ from simulations.load_splines import *
 pos_offset = 1.0
 robot1 = Unicycle( initial_state=[ -5.0, 8.0, 0.0 ], initial_control=np.zeros(2), geometric_params=Rect([3.0, 1.5], 1.0) )
 robots = [ robot1 ]
-############################################################################################################################
 
 ########################################### Load splines and create paths ##################################################
 
-############################################################################################################################
 
 ############################################# Configure and create controllers #############################################
 path_speed = 5.5
@@ -25,9 +23,10 @@ controller_parameters = {
     "q1": 1.0, "q2": 10.0, "alpha1": 100.0, "alpha2": 10.0, "beta0": 1.0, "radius": radius }
 
 # Create QP controller and graphical simulation.
-controller1 = PFController(robots, controller_parameters, id=0)
+controller1 = PFController(robots, barriers, controller_parameters, id=0)
 
 controllers = [ controller1 ]
+
 ####################################################### Configure plot #####################################################
 xoffsets, yoffsets = [-5, 5], [-5, 5]
 xlimits = (np.array(xlimits) + np.array(xoffsets)).tolist()
