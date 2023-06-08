@@ -142,7 +142,7 @@ class SplinePath:
         '''
         self.points = pts
         self.centroid = np.mean(self.points, axis=0)
-        self.gamma_max = self.points.shape[0] - 1
+        self.gamma_max = self.points.shape[0] + 1
         self.generate_spline()
 
     def translate(self, displacement):
@@ -233,6 +233,8 @@ class SplinePath:
         iii) minimum distance in path
         '''
         init = self.get_path_state()
+        # init = np.random.randint(self.gamma_min, self.gamma_max)
+
         if "init" in kwargs.keys():
             init = kwargs["init"]
 
@@ -241,8 +243,11 @@ class SplinePath:
             return np.linalg.norm( xd - point )
         
         results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
+
         minimizer = results.x
         self.set_path_state(minimizer)
+        self.system.log_state()
+        self.log_path()
         closest_point = self.get_path_point(minimizer)
         min_distance = cost(minimizer)
 

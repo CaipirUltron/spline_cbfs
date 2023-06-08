@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Arrow
 
 
 class Plot2DSimulation():
@@ -41,6 +41,7 @@ class Plot2DSimulation():
         self.time = logs["time"]
         self.robot_logs = logs["robots"]
         self.gamma_logs = logs["gamma"]
+        self.gamma_barrier_logs = logs["gamma_barriers"]
 
         self.num_steps = len(self.time)
 
@@ -51,7 +52,7 @@ class Plot2DSimulation():
         # Initalize graphical objects
         self.time_text = self.ax.text(plot_config["axeslim"][1]-10, plot_config["axeslim"][3]-3, str("Time = "))
 
-        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.circles, self.virtual_pts = [], [], [], [], []
+        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.circles, self.virtual_pts, self.arrows = [], [], [], [], [], []
         for k in range(self.num_robots):
             robot_pos, = self.ax.plot([],[],lw=1,color='black',marker='o',markersize=4.0)
             self.robot_positions.append(robot_pos)
@@ -62,7 +63,7 @@ class Plot2DSimulation():
             robot_traj, = self.ax.plot([],[],lw=2,color=self.colors[k])
             
             robot_x, robot_y, robot_angle = self.robot_logs[k][0][0], self.robot_logs[k][1][0], self.robot_logs[k][2][0]
-            pose = (robot_x, robot_y, robot_angle)
+            # pose = (robot_x, robot_y, robot_angle)
             center = self.robots[k].geometry.get_center( (robot_x, robot_y, robot_angle) )
             robot_geometry = Rectangle( center,
                                        width=self.robots[k].geometry.length,
@@ -81,7 +82,9 @@ class Plot2DSimulation():
         self.barrier_graphs = []
         for k in range(self.num_barriers):
             i_graph, = self.ax.plot([],[], lw=1.5, alpha=1.0, color='r')
+            i_arrow, = self.ax.plot([],[], linestyle='dashed', lw=1.5, alpha=1.0, color='r')
             self.barrier_graphs.append( i_graph )
+            self.arrows.append( i_arrow )
 
         self.animation = None
 
@@ -111,12 +114,14 @@ class Plot2DSimulation():
             for k in range(self.numpoints):
                 gamma = k*self.path_length/self.numpoints
                 # self.paths[i].set_path_state(gamma)
-                pos = self.barriers[i].get_path_point(gamma)
-                xpath.append(pos[0])
-                ypath.append(pos[1])
+                if gamma <= self.barriers[i].gamma_max:
+                    pos = self.barriers[i].get_path_point(gamma)
+                    xpath.append(pos[0])
+                    ypath.append(pos[1])
+                else: break
             self.barrier_graphs[i].set_data(xpath, ypath)
 
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.circles
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.circles + self.arrows
         graphical_elements.append(self.time_text)
 
         return graphical_elements
@@ -153,8 +158,17 @@ class Plot2DSimulation():
             self.virtual_pts[k].set_data(pos[0], pos[1])
             # self.ax.add_patch(self.path_circles[k])
 
+        # Update barrier graphics (arrows)
+        for k in range(self.num_barriers):
+
+            gamma = self.gamma_barrier_logs[k][i]
+            pos = self.barriers[k].get_path_point(gamma)
+            normal = self.barriers[k].get_path_normal(gamma)
+
+            self.arrows[k].set_data([ pos[0], pos[0] + normal[0]], [ pos[1], pos[1] + normal[1]])
+
         # Add artists
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
         graphical_elements.append(self.time_text)
 
         return graphical_elements

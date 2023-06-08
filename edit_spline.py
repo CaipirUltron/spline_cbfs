@@ -14,7 +14,7 @@ loaded = False
 # pts = np.array([pts_x, pts_y]).T
 # spline_params = { "degree": 3, "points": pts, "orientation": 'left' }
 
-num_points = 13
+num_points = 7
 pts = np.random.rand(num_points,2)
 spline_params = { "degree": 3, "points": pts, "orientation": 'left' }
 

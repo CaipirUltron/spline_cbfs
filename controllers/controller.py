@@ -78,6 +78,12 @@ class PFController:
         '''
         return self.path
 
+    # def get_barriers(self):
+    #     '''
+    #     Returns the list lane barriers.
+    #     '''
+    #     return self.lane_barriers
+
     def get_control(self):
         '''
         Computes the QP-CPF control.

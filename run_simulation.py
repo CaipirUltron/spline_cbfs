@@ -21,7 +21,7 @@ for step in range(0, num_steps):
     for k in range(len(sim_module.robots)):
         u = sim_module.controllers[k].get_control()
         robot_controls.append(u)
-        sim_module.paths[k] = sim_module.controllers[k].get_path()
+        # sim_module.paths[k] = sim_module.controllers[k].get_path()
 
     # Updates agent states
     for k in range(len(sim_module.robots)):
@@ -36,10 +36,12 @@ for robot in sim_module.robots:
     robot_logs.append( robot.state_log )
     control_logs.append( robot.control_log )
 
-gamma_logs, v_logs = [], []
+gamma_logs, v_logs, gamma_barrier_logs = [], [], []
 for path in sim_module.paths:
     gamma_logs.append( path.logs["gamma"] )
     v_logs.append( path.logs["dgamma"] )
+for barrier in sim_module.barriers:
+    gamma_barrier_logs.append( barrier.logs["gamma"] )
 # ----------------------------------------------------------------------------------
 
 # Collect simulation logs and save in .json file ------------------------------------
@@ -50,6 +52,7 @@ logs = {
     "control": control_logs,
     "gamma": gamma_logs,
     "v_logs": v_logs,
+    "gamma_barriers": gamma_barrier_logs
 }
 
 with open(simulation_config+".json", "w") as file:
