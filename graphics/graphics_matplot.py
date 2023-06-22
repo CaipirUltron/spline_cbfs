@@ -121,7 +121,7 @@ class Plot2DSimulation():
                 else: break
             self.barrier_graphs[i].set_data(xpath, ypath)
 
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.circles + self.arrows
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
         graphical_elements.append(self.time_text)
 
         return graphical_elements
@@ -145,8 +145,11 @@ class Plot2DSimulation():
             pose = (robot_x, robot_y, robot_angle)
             self.robot_geometries[k].xy = self.robots[k].geometry.get_corners(pose, "bottomleft")
             self.robot_geometries[k].angle = np.rad2deg(robot_angle)
+            # self.circles[k].center = self.robots[k].geometry.get_center(pose)
+            self.circles[k].center = (robot_x, robot_y)
 
             self.ax.add_patch(self.robot_geometries[k])
+            self.ax.add_patch(self.circles[k])
 
         # Update path graphics
         for k in range(self.num_paths):
@@ -156,7 +159,6 @@ class Plot2DSimulation():
             pos = self.paths[k].get_path_point(gamma)
 
             self.virtual_pts[k].set_data(pos[0], pos[1])
-            # self.ax.add_patch(self.path_circles[k])
 
         # Update barrier graphics (arrows)
         for k in range(self.num_barriers):
@@ -170,6 +172,7 @@ class Plot2DSimulation():
         # Add artists
         graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
         graphical_elements.append(self.time_text)
+        graphical_elements += self.circles
 
         return graphical_elements
 

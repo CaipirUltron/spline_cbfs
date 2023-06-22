@@ -1,6 +1,5 @@
 import os, sys, json
 import numpy as np
-from controllers import SplinePath, SplineBarrier
 
 simulation_config = sys.argv[1].replace(".json","")
 
@@ -33,15 +32,3 @@ for barrier_name in barrier_names:
 
 xlimits = [ np.min(x_coords), np.max(x_coords) ]
 ylimits = [ np.min(y_coords), np.max(y_coords) ]
-
-paths = []
-print("Available paths: ")
-for path_param in path_params:
-    print(path_params)
-    paths.append( SplinePath( params=path_param, init_path_state=[0.0] ) )
-
-barriers = []
-print("Available barriers: ")
-for barrier_param in barrier_params:
-    print(barrier_params)
-    barriers.append( SplineBarrier( params=barrier_param, init_path_state=[0.0], threshold=0.3 ) )

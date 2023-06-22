@@ -243,8 +243,8 @@ class SplinePath:
             return np.linalg.norm( xd - point )
         
         results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
-
         minimizer = results.x
+
         self.set_path_state(minimizer)
         self.system.log_state()
         self.log_path()
