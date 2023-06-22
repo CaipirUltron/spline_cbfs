@@ -136,4 +136,4 @@ numpy_tests.py
 *.eps
 
 #JSON
-*.json
+#*.json
