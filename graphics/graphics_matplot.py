@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
-from matplotlib.patches import Rectangle, Arrow
+from matplotlib.patches import Rectangle
 
 
 class Plot2DSimulation():

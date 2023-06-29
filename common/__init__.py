@@ -1,1 +1,1 @@
-from .common import rot, Rect
+from .common import rot, Rect, EllipticalBarrier

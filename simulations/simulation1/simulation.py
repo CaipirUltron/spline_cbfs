@@ -7,7 +7,7 @@ from simulations.load_splines import *
 
 ########################################### Configure and create robots ####################################################
 pos_offset = 1.0
-robot1 = Unicycle( initial_state=[ -5.0, 10.0, 0.0 ], initial_control=np.zeros(2), geometric_params=Rect([3.0, 1.5], 1.0) )
+robot1 = Unicycle( initial_state=[ -5.0, 10.0, 0.0 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.0) )
 
 robots = [ robot1 ]
 
