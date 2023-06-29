@@ -3,6 +3,9 @@ import numpy as np
 def rot(angle):
     return np.array([[ np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
+def drot(angle):
+    return np.array([[ -np.sin(angle), -np.cos(angle)], [np.cos(angle), -np.sin(angle)]])
+
 class Rect():
     '''
     Simple rectangle.
@@ -37,3 +40,28 @@ class Rect():
                 return [ topleft, topright, bottomleft, bottomright ]
         else:
             return [ topleft, topright, bottomleft, bottomright ]
+        
+class EllipticalBarrier():
+    '''
+    Elliptical barrier
+    '''
+    def __init__(self, shape=[1,1]):
+
+        self.center = np.zeros(2)
+        self.orientation = 0.0
+
+        self.shape = shape
+        self.H = rot(self.orientation).T @ np.diag(self.shape) @ rot(self.orientation)
+        self.dH = drot(self.orientation).T @ np.diag(self.shape) @ rot(self.orientation) + rot(self.orientation).T @ np.diag(self.shape) @ drot(self.orientation)
+
+    def update_pose(self, new_pose):
+        self.center = new_pose[0:2]
+        self.orientation = new_pose[2]
+        self.H = rot(self.orientation).T @ np.diag(self.shape) @ rot(self.orientation)
+        self.dH = drot(self.orientation).T @ np.diag(self.shape) @ rot(self.orientation) + rot(self.orientation).T @ np.diag(self.shape) @ drot(self.orientation)
+
+    def function(self, value):
+        return 0.5 * ( value - self.center ) @ self.H @ ( value - self.center ) - 0.5
+    
+    def gradient(self, value):
+        return np.hstack( [ (-(value - self.center) @ self.H).reshape(2), ( value - self.center ).T @ self.dH @ ( value - self.center ) ])

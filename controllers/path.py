@@ -252,7 +252,37 @@ class SplinePath:
         min_distance = cost(minimizer)
 
         return minimizer, closest_point, min_distance
-    
+
+
+    def find_barrier_min(self, cbf, **kwargs):
+        '''
+        Method for computing minimum value of barrier over the spline. Note: it updates the path state.
+        Returns:
+        i) minimizer (parameter solution)
+        ii) closest point in the curve
+        iii) minimum distance in path
+        '''
+        init = self.get_path_state()
+        # init = np.random.randint(self.gamma_min, self.gamma_max)
+
+        if "init" in kwargs.keys():
+            init = kwargs["init"]
+
+        def cost(gamma):
+            xd = self.get_path_point(gamma)
+            return cbf.function(xd)
+        
+        results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
+        minimizer = results.x
+
+        self.set_path_state(minimizer)
+        self.system.log_state()
+        self.log_path()
+        closest_point = self.get_path_point(minimizer)
+        min_distance = cost(minimizer)
+
+        return minimizer, closest_point, min_distance
+
 
 class SplineBarrier(SplinePath):
     '''

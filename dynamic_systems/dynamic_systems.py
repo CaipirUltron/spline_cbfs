@@ -174,13 +174,13 @@ class Unicycle(AffineSystem):
     Implements the unicycle dynamics: dx = v cos(phi), dy = v sin(phi), dphi = omega.
     State and control are given by [x, y, z] and [v, omega], respectively.
     '''
-    def __init__(self, initial_state, initial_control, geometric_params=Rect([1.0, 1.0], 0.0)):
+    def __init__(self, initial_state, initial_control, geometry=Rect([1.0, 1.0], 0.0)):
         if len(initial_state) != 3:
             raise Exception('State dimension is different from 3.')
         if len(initial_control) != 2:
             raise Exception('Control dimension is different from 3.')
         super().__init__(initial_state, initial_control)
-        self.geometry = geometric_params
+        self.geometry = geometry
         self.pos_offset = self.geometry.center_offset
         self.f()
         self.g()
