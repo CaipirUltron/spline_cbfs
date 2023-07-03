@@ -32,6 +32,7 @@ class Plot2DSimulation():
         self.fig, self.ax = plt.subplots()
         self.ax.set_title('Traffic Control with CLF-CBFs')
 
+        self.ax_lims = plot_config["axeslim"][0:2]
         self.ax.set_xlim( plot_config["axeslim"][0:2] )
         self.ax.set_ylim( plot_config["axeslim"][2:4] )
         self.ax.set_aspect('equal', adjustable='box')
@@ -52,10 +53,13 @@ class Plot2DSimulation():
         # Initalize graphical objects
         self.time_text = self.ax.text(plot_config["axeslim"][1]-10, plot_config["axeslim"][3]-3, str("Time = "))
 
-        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.circles, self.virtual_pts, self.arrows = [], [], [], [], [], []
+        self.robot_positions, self.robot_trajectories, self.robot_geometries, self.robot_ellipses, self.virtual_pts, self.arrows = [], [], [], [], [], []
         for k in range(self.num_robots):
             robot_pos, = self.ax.plot([],[],lw=1,color='black',marker='o',markersize=4.0)
             self.robot_positions.append(robot_pos)
+
+            ellipse, = self.ax.plot([],[],lw=1,color='blue')
+            self.robot_ellipses.append(ellipse)
 
             virtual_pt,  = self.ax.plot([],[],lw=1,color='red',marker='o',markersize=4.0)
             self.virtual_pts.append(virtual_pt)
@@ -72,7 +76,7 @@ class Plot2DSimulation():
 
             self.robot_trajectories.append( robot_traj )
             self.robot_geometries.append( robot_geometry )
-            self.circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
+            # self.circles.append( plt.Circle((robot_x, robot_y), plot_config["radius"], color=self.colors[k], linestyle = '--', fill=False) )
 
         self.path_graphs = []
         for k in range(self.num_paths):
@@ -97,6 +101,7 @@ class Plot2DSimulation():
         for i in range(self.num_robots):
             self.robot_positions[i].set_data([],[])
             self.robot_trajectories[i].set_data([],[])
+            self.robot_ellipses[i].set_data([],[])
 
         for i in range(self.num_paths):
             xpath, ypath = [], []
@@ -145,11 +150,12 @@ class Plot2DSimulation():
             pose = (robot_x, robot_y, robot_angle)
             self.robot_geometries[k].xy = self.robots[k].geometry.get_corners(pose, "bottomleft")
             self.robot_geometries[k].angle = np.rad2deg(robot_angle)
-            # self.circles[k].center = self.robots[k].geometry.get_center(pose)
-            self.circles[k].center = (robot_x, robot_y)
 
             self.ax.add_patch(self.robot_geometries[k])
-            self.ax.add_patch(self.circles[k])
+
+            center_pose = np.hstack([ self.robots[k].geometry.get_center(pose), robot_angle ])
+            self.robots[k].barrier.update_pose( center_pose )
+            self.robots[k].barrier.contour_plot(self.robot_ellipses[k])
 
         # Update path graphics
         for k in range(self.num_paths):
@@ -172,7 +178,7 @@ class Plot2DSimulation():
         # Add artists
         graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
         graphical_elements.append(self.time_text)
-        graphical_elements += self.circles
+        graphical_elements += self.robot_ellipses
 
         return graphical_elements
 

@@ -102,11 +102,11 @@ class PFController:
             a_lane_cbf = np.array([]).reshape(0,self.QP1_dim)
             b_lane_cbf = []
 
-        A1 = np.vstack([ a_clf, a_vehicle_cbf, a_lane_cbf ])
-        b1 = np.hstack([ b_clf, b_vehicle_cbf, b_lane_cbf ])
+        # A1 = np.vstack([ a_clf, a_vehicle_cbf, a_lane_cbf ])
+        # b1 = np.hstack([ b_clf, b_vehicle_cbf, b_lane_cbf ])
 
-        # A1 = np.vstack([ a_clf, a_vehicle_cbf ])
-        # b1 = np.hstack([ b_clf, b_vehicle_cbf ])
+        A1 = np.vstack([ a_clf, a_vehicle_cbf ])
+        b1 = np.hstack([ b_clf, b_vehicle_cbf ])
 
         # Solve QP1 and get vehicle control
         self.QP1.set_inequality_constraints(A1, b1)
@@ -188,13 +188,18 @@ class PFController:
                 f_neighbor = self.vehicles[neighbour_id].get_f()[0:2]
                 g_neighbor = self.vehicles[neighbour_id].get_g()[0:2,:]
 
-                delx = self.system.get_state()[0:2] - self.vehicles[neighbour_id].get_state()[0:2]
-                delx_normalized = delx/np.linalg.norm(delx)
-                Distance = np.linalg.norm(delx)
+                # delx = self.system.get_state()[0:2] - self.vehicles[neighbour_id].get_state()[0:2]
+                # delx_normalized = delx/np.linalg.norm(delx)
+                # Distance = np.linalg.norm(delx)
 
-                h = (Distance - 2*self.radius)
-                Lfh = delx_normalized.dot( f - f_neighbor - g_neighbor @ self.vehicles[neighbour_id].get_control() )
-                Lgh = -(g.T @ delx_normalized).reshape(self.control_dim)
+                # h = (Distance - 2*self.radius)
+                # Lfh = delx_normalized.dot( f - f_neighbor - g_neighbor @ self.vehicles[neighbour_id].get_control() )
+                # Lgh = -(g.T @ delx_normalized).reshape(self.control_dim)
+
+                h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
+
+                Lfh = ( g_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].control_dim) @ self.vehicles[neighbour_id].get_control()
+                Lgh = ( -g.T @ grad_i_h ).reshape(self.control_dim)
 
                 # Adds to the CBF constraints
                 a_cbf_k_list = [0 for i in range(self.QP1_dim)]
@@ -210,16 +215,16 @@ class PFController:
     def get_lane_cbf_constraint(self):
 
         # Affine system dynamics
-        g = self.system.get_g()[0:2,:]
-        p = self.system.get_state()[0:2]
+        # f = self.system.get_f()
+        g = self.system.get_g()
 
         # Lane barriers for QP1
         a_cbf, b_cbf = [], []
         for lane_barrier in self.lane_barriers:
-            h, dh = lane_barrier.get_barrier(p)
+            h, grad_h, spline_pt = lane_barrier.compute_barrier( self.system.barrier )
 
             Lfh = 0.0
-            Lgh = -(g.T @ dh).reshape(self.control_dim)
+            Lgh = (-g.T @ grad_h).reshape(self.control_dim)
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]

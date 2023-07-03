@@ -184,10 +184,6 @@ class SplinePath:
             raise Exception("Gradient vanishes at gamma = " + str(gamma))
         return normal/norm_normal
 
-    # def get_gradient_norm(self, gamma):
-    #     dxd = self.get_path_gradient(gamma)
-    #     return np.linalg.norm( dxd )
-
     def get_path_state(self):
         state = self.system.get_state()
         self.gamma = state[0]
@@ -224,64 +220,34 @@ class SplinePath:
             ypath.append(pos[1])
         path_graph.set_data(xpath, ypath)
 
-    def find_min(self, point, **kwargs):
-        '''
-        Method for computing minimum distance to point. Note: it updates the path state.
-        Returns:
-        i) minimizer (parameter solution)
-        ii) closest point in the curve
-        iii) minimum distance in path
-        '''
-        init = self.get_path_state()
-        # init = np.random.randint(self.gamma_min, self.gamma_max)
+    # def find_min(self, point, **kwargs):
+    #     '''
+    #     Method for computing minimum distance to point. Note: it updates the path state.
+    #     Returns:
+    #     i) minimizer (parameter solution)
+    #     ii) closest point in the curve
+    #     iii) minimum distance in path
+    #     '''
+    #     init = self.get_path_state()
+    #     # init = np.random.randint(self.gamma_min, self.gamma_max)
 
-        if "init" in kwargs.keys():
-            init = kwargs["init"]
+    #     if "init" in kwargs.keys():
+    #         init = kwargs["init"]
 
-        def cost(gamma):
-            xd = self.get_path_point(gamma)
-            return np.linalg.norm( xd - point )
+    #     def cost(gamma):
+    #         xd = self.get_path_point(gamma)
+    #         return np.linalg.norm( xd - point )
         
-        results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
-        minimizer = results.x
+    #     results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
+    #     minimizer = results.x
 
-        self.set_path_state(minimizer)
-        self.system.log_state()
-        self.log_path()
-        closest_point = self.get_path_point(minimizer)
-        min_distance = cost(minimizer)
+    #     self.set_path_state(minimizer)
+    #     self.system.log_state()
+    #     self.log_path()
+    #     closest_point = self.get_path_point(minimizer)
+    #     min_distance = cost(minimizer)
 
-        return minimizer, closest_point, min_distance
-
-
-    def find_barrier_min(self, cbf, **kwargs):
-        '''
-        Method for computing minimum value of barrier over the spline. Note: it updates the path state.
-        Returns:
-        i) minimizer (parameter solution)
-        ii) closest point in the curve
-        iii) minimum distance in path
-        '''
-        init = self.get_path_state()
-        # init = np.random.randint(self.gamma_min, self.gamma_max)
-
-        if "init" in kwargs.keys():
-            init = kwargs["init"]
-
-        def cost(gamma):
-            xd = self.get_path_point(gamma)
-            return cbf.function(xd)
-        
-        results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
-        minimizer = results.x
-
-        self.set_path_state(minimizer)
-        self.system.log_state()
-        self.log_path()
-        closest_point = self.get_path_point(minimizer)
-        min_distance = cost(minimizer)
-
-        return minimizer, closest_point, min_distance
+    #     return minimizer, closest_point, min_distance
 
 
 class SplineBarrier(SplinePath):
@@ -292,13 +258,45 @@ class SplineBarrier(SplinePath):
         super().__init__(params, init_path_state = init_path_state)
         self.threshold = threshold
     
-    def get_barrier(self, point):
-        '''
-        Get the circular barrier around a point and its gradient
-        '''
-        gamma_sol, point_sol, distance = self.find_min(point)
-        normal = self.get_path_normal(gamma_sol)
-        h = ( point - point_sol ).dot( normal ) - self.threshold
-        dh = normal
+    # def get_barrier(self, point):
+    #     '''
+    #     Get the circular barrier around a point and its gradient
+    #     '''
+    #     gamma_sol, point_sol, distance = self.find_min(point)
+    #     normal = self.get_path_normal(gamma_sol)
+    #     h = ( point - point_sol ).dot( normal ) - self.threshold
+    #     dh = normal
 
-        return h, dh
+    #     return h, dh
+    
+    def compute_barrier(self, barrier, **kwargs):
+        '''
+        Method for computing minimum value of barrier over the spline. Note: it updates the path state.
+        Returns:
+        i) barrier value
+        ii) barrier gradient
+        iii) optimal point on spline
+        '''
+        init = self.get_path_state()
+        # init = np.random.randint(self.gamma_min, self.gamma_max)
+
+        if "init" in kwargs.keys():
+            init = kwargs["init"]
+
+        def cost(gamma):
+            return barrier.function( self.get_path_point(gamma) )
+        
+        # Search over the spline...
+        results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
+        gamma_sol = results.x
+
+        B_sol = self.get_path_point(gamma_sol)
+
+        barrier_value = barrier.function(B_sol)
+        barrier_gradient = barrier.gradient(B_sol)
+
+        self.set_path_state(gamma_sol)
+        self.system.log_state()
+        self.log_path()
+
+        return barrier_value, barrier_gradient, B_sol

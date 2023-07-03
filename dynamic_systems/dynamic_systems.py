@@ -1,8 +1,7 @@
-import math
 import numpy as np
 from scipy.integrate import ode
 from abc import ABC, abstractmethod
-from common import Rect
+from common import Rect, EllipticalBarrier
 
 class DynamicSystem(ABC):
     '''
@@ -174,16 +173,26 @@ class Unicycle(AffineSystem):
     Implements the unicycle dynamics: dx = v cos(phi), dy = v sin(phi), dphi = omega.
     State and control are given by [x, y, z] and [v, omega], respectively.
     '''
-    def __init__(self, initial_state, initial_control, geometry=Rect([1.0, 1.0], 0.0)):
+    def __init__(self, initial_state, initial_control, geometry=Rect([1.0, 1.0], 0.0), barrier=EllipticalBarrier()):
         if len(initial_state) != 3:
             raise Exception('State dimension is different from 3.')
         if len(initial_control) != 2:
             raise Exception('Control dimension is different from 3.')
         super().__init__(initial_state, initial_control)
         self.geometry = geometry
+        self.barrier = barrier
         self.pos_offset = self.geometry.center_offset
         self.f()
         self.g()
+
+    def actuate(self, dt):
+        '''
+        Modifies actuate() function to automatically update barrier
+        '''
+        center = self.geometry.get_center( self.get_state() )
+        new_pose = np.hstack([ center, self._state[2] ])
+        self.barrier.update_pose(new_pose)
+        super().actuate(dt)
 
     def f(self):
         self._f = np.zeros(self.n)

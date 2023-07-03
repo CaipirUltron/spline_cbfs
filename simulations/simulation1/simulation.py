@@ -1,13 +1,13 @@
 import numpy as np
 
-from common import Rect
+from common import Rect, EllipticalBarrier
 from dynamic_systems import Unicycle
 from controllers import PFController, SplinePath, SplineBarrier
 from simulations.load_splines import *
 
 ########################################### Configure and create robots ####################################################
 pos_offset = 1.0
-robot1 = Unicycle( initial_state=[ -5.0, 10.0, 0.0 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.0) )
+robot1 = Unicycle( initial_state=[ -5.0, 10.0, 0.0 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.0), barrier=EllipticalBarrier(shape=[2.0, 1.0]) )
 
 robots = [ robot1 ]
 
@@ -25,7 +25,6 @@ print("Available barriers: ")
 for barrier_param in barrier_params:
     print(barrier_params)
     barriers.append( SplineBarrier( params=barrier_param, init_path_state=[0.0], threshold=radius) )
-
 
 ############################################# Configure and create controllers #############################################
 path_speed = 5.5
