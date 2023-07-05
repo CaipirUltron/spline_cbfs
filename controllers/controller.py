@@ -102,11 +102,11 @@ class PFController:
             a_lane_cbf = np.array([]).reshape(0,self.QP1_dim)
             b_lane_cbf = []
 
-        # A1 = np.vstack([ a_clf, a_vehicle_cbf, a_lane_cbf ])
-        # b1 = np.hstack([ b_clf, b_vehicle_cbf, b_lane_cbf ])
+        A1 = np.vstack([ a_clf, a_vehicle_cbf, a_lane_cbf ])
+        b1 = np.hstack([ b_clf, b_vehicle_cbf, b_lane_cbf ])
 
-        A1 = np.vstack([ a_clf, a_vehicle_cbf ])
-        b1 = np.hstack([ b_clf, b_vehicle_cbf ])
+        # A1 = np.vstack([ a_clf, a_vehicle_cbf ])
+        # b1 = np.hstack([ b_clf, b_vehicle_cbf ])
 
         # Solve QP1 and get vehicle control
         self.QP1.set_inequality_constraints(A1, b1)
@@ -161,10 +161,10 @@ class PFController:
 
         # Lie derivatives
         if type(self.system == Unicycle): 
-            LfV = grad_V.dot( f[0:2] - dxd*dgamma   )
+            LfV = grad_V.dot( f[0:2] - dxd*dgamma )
             LgV = g[0:2,0:2].T.dot(grad_V)
         else:
-            LfV = grad_V.dot( f - dxd*dgamma   )
+            LfV = grad_V.dot( f - dxd*dgamma )
             LgV = g.T.dot(grad_V)
         
         # Stabilization CBF contraints
@@ -178,28 +178,20 @@ class PFController:
         Sets the barrier constraint for neighbor vehicles.
         '''
         # Affine system dynamics
-        f = self.system.get_f()[0:2]
-        g = self.system.get_g()[0:2,:]
+        f = self.system.get_f()
+        gc = self.system.get_gc()
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
         for neighbour_id in range(self.num_vehicles):
             if neighbour_id != self.id:
-                f_neighbor = self.vehicles[neighbour_id].get_f()[0:2]
-                g_neighbor = self.vehicles[neighbour_id].get_g()[0:2,:]
-
-                # delx = self.system.get_state()[0:2] - self.vehicles[neighbour_id].get_state()[0:2]
-                # delx_normalized = delx/np.linalg.norm(delx)
-                # Distance = np.linalg.norm(delx)
-
-                # h = (Distance - 2*self.radius)
-                # Lfh = delx_normalized.dot( f - f_neighbor - g_neighbor @ self.vehicles[neighbour_id].get_control() )
-                # Lgh = -(g.T @ delx_normalized).reshape(self.control_dim)
+                f_neighbor = self.vehicles[neighbour_id].get_f()
+                gc_neighbor = self.vehicles[neighbour_id].get_gc()
 
                 h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
 
-                Lfh = ( g_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].control_dim) @ self.vehicles[neighbour_id].get_control()
-                Lgh = ( -g.T @ grad_i_h ).reshape(self.control_dim)
+                Lfh = ( gc_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].control_dim) @ self.vehicles[neighbour_id].get_control()
+                Lgh = ( -gc.T @ grad_i_h ).reshape(self.control_dim)
 
                 # Adds to the CBF constraints
                 a_cbf_k_list = [0 for i in range(self.QP1_dim)]
@@ -216,7 +208,7 @@ class PFController:
 
         # Affine system dynamics
         # f = self.system.get_f()
-        g = self.system.get_g()
+        gc = self.system.get_gc()
 
         # Lane barriers for QP1
         a_cbf, b_cbf = [], []
@@ -224,7 +216,7 @@ class PFController:
             h, grad_h, spline_pt = lane_barrier.compute_barrier( self.system.barrier )
 
             Lfh = 0.0
-            Lgh = (-g.T @ grad_h).reshape(self.control_dim)
+            Lgh = (-gc.T @ grad_h).reshape(self.control_dim)
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]

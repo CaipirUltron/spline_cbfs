@@ -4,6 +4,7 @@ import scipy.interpolate as si
 import scipy.optimize as opt
 from dynamic_systems import Integrator
 
+
 def Line(gamma, params):
     '''
     Method for a straight line path.
@@ -14,7 +15,6 @@ def Line(gamma, params):
 
     xd = starting_pt + gamma*direction
     dxd = direction
-    # ddxd = np.zeros(len(direction))
 
     return xd, dxd
 
@@ -220,35 +220,6 @@ class SplinePath:
             ypath.append(pos[1])
         path_graph.set_data(xpath, ypath)
 
-    # def find_min(self, point, **kwargs):
-    #     '''
-    #     Method for computing minimum distance to point. Note: it updates the path state.
-    #     Returns:
-    #     i) minimizer (parameter solution)
-    #     ii) closest point in the curve
-    #     iii) minimum distance in path
-    #     '''
-    #     init = self.get_path_state()
-    #     # init = np.random.randint(self.gamma_min, self.gamma_max)
-
-    #     if "init" in kwargs.keys():
-    #         init = kwargs["init"]
-
-    #     def cost(gamma):
-    #         xd = self.get_path_point(gamma)
-    #         return np.linalg.norm( xd - point )
-        
-    #     results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
-    #     minimizer = results.x
-
-    #     self.set_path_state(minimizer)
-    #     self.system.log_state()
-    #     self.log_path()
-    #     closest_point = self.get_path_point(minimizer)
-    #     min_distance = cost(minimizer)
-
-    #     return minimizer, closest_point, min_distance
-
 
 class SplineBarrier(SplinePath):
     '''
@@ -257,17 +228,6 @@ class SplineBarrier(SplinePath):
     def __init__(self, params, init_path_state = [0.0], threshold = 1.0):
         super().__init__(params, init_path_state = init_path_state)
         self.threshold = threshold
-    
-    # def get_barrier(self, point):
-    #     '''
-    #     Get the circular barrier around a point and its gradient
-    #     '''
-    #     gamma_sol, point_sol, distance = self.find_min(point)
-    #     normal = self.get_path_normal(gamma_sol)
-    #     h = ( point - point_sol ).dot( normal ) - self.threshold
-    #     dh = normal
-
-    #     return h, dh
     
     def compute_barrier(self, barrier, **kwargs):
         '''

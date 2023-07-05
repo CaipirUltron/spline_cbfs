@@ -57,14 +57,14 @@ class EllipticalBarrier():
 
         self.shape = shape
         self.eigen = np.array([ self.shape[1]**2, self.shape[0]**2 ])
-        self.H = rot(self.orientation).T @ np.diag(self.eigen) @ rot(self.orientation)
-        self.dH = drot(self.orientation).T @ np.diag(self.eigen) @ rot(self.orientation) + rot(self.orientation).T @ np.diag(self.eigen) @ drot(self.orientation)
+        self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
+        self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
 
     def update_pose(self, new_pose):
         self.center = new_pose[0:2]
         self.orientation = new_pose[2]
-        self.H = rot(self.orientation).T @ np.diag(self.eigen) @ rot(self.orientation)
-        self.dH = drot(self.orientation).T @ np.diag(self.eigen) @ rot(self.orientation) + rot(self.orientation).T @ np.diag(self.eigen) @ drot(self.orientation)
+        self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
+        self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
 
     def ellipse(self, gamma):
         '''
@@ -75,14 +75,17 @@ class EllipticalBarrier():
         return np.array([ a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) + self.center[0],
                           a*np.cos(gamma)*np.sin(self.orientation) + b*np.sin(gamma)*np.cos(self.orientation) + self.center[1] ])
 
-    def ellipse_gradient(self, gamma):
+    def ellipse_jacobian(self, gamma):
         '''
-        Returns the gradient of the parametrized ellipse (derivative wrt gamma).
+        Returns the Jacobian of the parametrized ellipse (derivative wrt to the robot state).
         '''
         a = self.shape[0]
         b = self.shape[1]
-        return np.array([ -a*np.sin(gamma)*np.cos(self.orientation) - b*np.cos(gamma)*np.sin(self.orientation),
-                          -a*np.sin(gamma)*np.sin(self.orientation) + b*np.cos(gamma)*np.cos(self.orientation) ])
+
+        grad_pos = np.eye(2)
+        grad_theta = np.array([ -a*np.cos(gamma)*np.sin(self.orientation) - b*np.sin(gamma)*np.cos(self.orientation),
+                                 a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) ])
+        return np.hstack([ grad_pos, grad_theta.reshape(2,1) ])
 
     def function(self, value):
         return 0.5 * ( value - self.center ) @ self.H @ ( value - self.center ) - 0.5
@@ -90,9 +93,9 @@ class EllipticalBarrier():
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
         grad_hij_thetai = ( value - self.center ).T @ self.dH @ ( value - self.center )
-        return np.hstack( [ grad_hij_pi, grad_hij_thetai ])
+        return np.hstack([ grad_hij_pi, grad_hij_thetai ])
     
-    def compute_barrier(self, barrier, **kwargs):
+    def compute_barrier(self, neighbor_barrier, **kwargs):
         '''
         Computes vehicle barrier (between self and barrier_obj).
         Returns:
@@ -106,19 +109,24 @@ class EllipticalBarrier():
             init = kwargs["init"]
 
         def cost(gamma):
-            ellipse_point = barrier.ellipse(gamma)
+            ellipse_point = neighbor_barrier.ellipse(gamma)
             return self.function( ellipse_point )
 
         # Search over the neighbor ellipse boundary...
         results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=0.0, ub=2*np.pi ) )
         gamma_sol = results.x
-        opt_ellipse = barrier.ellipse(gamma_sol)
+        opt_ellipse = neighbor_barrier.ellipse(gamma_sol)
 
+        # Self barrier
         barrier_value = self.function(opt_ellipse)
         barrier_gradient = self.gradient(opt_ellipse)
 
-        grad_hij_pj = ((opt_ellipse - self.center) @ self.H).reshape(2)
-        grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ barrier.ellipse_gradient(gamma_sol)
+        # Neighbor barrier
+        ellipse_jac = neighbor_barrier.ellipse_jacobian(gamma_sol)
+        print(ellipse_jac)
+
+        grad_hij_pj = ((opt_ellipse - self.center) @ self.H @ ellipse_jac[:,0:2] ).reshape(2)
+        grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ ellipse_jac[:,2]
         neighbor_barrier_gradient = np.array([ grad_hij_pj, grad_hij_thetaj ])
 
         return barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse

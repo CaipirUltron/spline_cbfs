@@ -189,10 +189,10 @@ class Unicycle(AffineSystem):
         '''
         Modifies actuate() function to automatically update barrier
         '''
+        super().actuate(dt)
         center = self.geometry.get_center( self.get_state() )
         new_pose = np.hstack([ center, self._state[2] ])
         self.barrier.update_pose(new_pose)
-        super().actuate(dt)
 
     def f(self):
         self._f = np.zeros(self.n)
@@ -201,5 +201,10 @@ class Unicycle(AffineSystem):
         x = self._state[0]
         y = self._state[1]
         phi = self._state[2]
-        # self._g = np.array([[ np.cos(phi), 0.0 ],[ np.sin(phi), 0.0 ],[0.0, 1.0]])
         self._g = np.array([[ np.cos(phi), -self.pos_offset*np.sin(phi) ],[ np.sin(phi), self.pos_offset*np.cos(phi) ],[0.0, 1.0]])
+
+    def get_gc(self):
+        x = self._state[0]
+        y = self._state[1]
+        phi = self._state[2]
+        return np.array([[ np.cos(phi), 0.0 ],[ np.sin(phi), 0.0 ],[0.0, 1.0]])

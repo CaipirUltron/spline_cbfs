@@ -88,7 +88,9 @@ class Plot2DSimulation():
             i_graph, = self.ax.plot([],[], lw=1.5, alpha=1.0, color='r')
             i_arrow, = self.ax.plot([],[], linestyle='dashed', lw=1.5, alpha=1.0, color='r')
             self.barrier_graphs.append( i_graph )
-            self.arrows.append( i_arrow )
+            self.arrows.append([])
+            for _ in range(self.num_robots):
+                self.arrows[-1].append( i_arrow )
 
         self.animation = None
 
@@ -126,9 +128,11 @@ class Plot2DSimulation():
                 else: break
             self.barrier_graphs[i].set_data(xpath, ypath)
 
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
-
+        for k in range(self.num_barriers):
+            graphical_elements += self.arrows[k]
+        
         return graphical_elements
 
     def update(self, i):
@@ -170,15 +174,20 @@ class Plot2DSimulation():
         for k in range(self.num_barriers):
 
             gamma = self.gamma_barrier_logs[k][i]
-            pos = self.barriers[k].get_path_point(gamma)
+            # pos = self.barriers[k].get_path_point(gamma)
             normal = self.barriers[k].get_path_normal(gamma)
 
-            self.arrows[k].set_data([ pos[0], pos[0] + normal[0]], [ pos[1], pos[1] + normal[1]])
+            self.barriers[k].set_path_state(gamma)
+            for j in range(self.num_robots):
+                _, _, spline_pt = self.barriers[k].compute_barrier( self.robots[j].barrier )
+                self.arrows[k][j].set_data([ spline_pt[0], spline_pt[0] + normal[0]], [ spline_pt[1], spline_pt[1] + normal[1]])
 
         # Add artists
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.arrows
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
         graphical_elements += self.robot_ellipses
+        for k in range(self.num_barriers):
+            graphical_elements += self.arrows[k]
 
         return graphical_elements
 
