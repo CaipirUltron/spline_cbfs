@@ -56,7 +56,7 @@ class EllipticalBarrier():
         self.orientation = 0.0
 
         self.shape = shape
-        self.eigen = np.array([ self.shape[1]**2, self.shape[0]**2 ])
+        self.eigen = np.array([ 1/(self.shape[0]**2), 1/(self.shape[1]**2) ])
         self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
         self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
 
@@ -92,7 +92,7 @@ class EllipticalBarrier():
     
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
-        grad_hij_thetai = ( value - self.center ).T @ self.dH @ ( value - self.center )
+        grad_hij_thetai = 0.5*( value - self.center ).T @ self.dH @ ( value - self.center )
         return np.hstack([ grad_hij_pi, grad_hij_thetai ])
     
     def compute_barrier(self, neighbor_barrier, **kwargs):
@@ -123,7 +123,6 @@ class EllipticalBarrier():
 
         # Neighbor barrier
         ellipse_jac = neighbor_barrier.ellipse_jacobian(gamma_sol)
-        print(ellipse_jac)
 
         grad_hij_pj = ((opt_ellipse - self.center) @ self.H @ ellipse_jac[:,0:2] ).reshape(2)
         grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ ellipse_jac[:,2]

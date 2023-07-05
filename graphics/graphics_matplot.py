@@ -13,8 +13,7 @@ class Plot2DSimulation():
         plot_config = {
             "axeslim": (-6,6,-6,6),
             "path_length": 40, 
-            "numpoints": 80,
-            "radius": 0.1,
+            "numpoints": 80
         }
         if "plot_config" in kwargs.keys():
             plot_config = kwargs["plot_config"]

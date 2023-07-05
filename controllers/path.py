@@ -29,7 +29,6 @@ def Circle(gamma, params):
 
     xd = np.array(center_pt) + radius*np.array([ np.sin(gamma), np.cos(gamma) ])
     dxd = radius*np.array([ np.cos(gamma), -np.sin(gamma) ])
-    # ddxd = (1/radius)*np.array([ -np.sin(gamma/radius), np.cos(gamma/radius) ])
 
     return xd, dxd
 
