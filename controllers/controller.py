@@ -124,8 +124,6 @@ class PFController:
             self.dgamma = -self.kappa*sat(eta_e, limits=[-10.0,10.0])
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-            
-        self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
 
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
