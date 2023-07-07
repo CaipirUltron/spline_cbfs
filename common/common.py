@@ -73,7 +73,7 @@ class EllipticalBarrier():
         a = self.shape[0]
         b = self.shape[1]
         return np.array([ a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) + self.center[0],
-                          a*np.cos(gamma)*np.sin(self.orientation) + b*np.sin(gamma)*np.cos(self.orientation) + self.center[1] ])
+                          a*np.cos(gamma)*np.sin(self.orientation) + b*np.sin(gamma)*np.cos(self.orientation) + self.center[1] ]).reshape(2)
 
     def ellipse_jacobian(self, gamma):
         '''
@@ -88,7 +88,7 @@ class EllipticalBarrier():
         return np.hstack([ grad_pos, grad_theta.reshape(2,1) ])
 
     def function(self, value):
-        return 0.5 * ( value - self.center ) @ self.H @ ( value - self.center ) - 0.5
+        return 0.5 * ( value - self.center ).T @ self.H @ ( value - self.center ) - 0.5
     
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
@@ -126,11 +126,11 @@ class EllipticalBarrier():
 
         grad_hij_pj = ((opt_ellipse - self.center) @ self.H @ ellipse_jac[:,0:2] ).reshape(2)
         grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ ellipse_jac[:,2]
-        neighbor_barrier_gradient = np.array([ grad_hij_pj, grad_hij_thetaj ])
+        neighbor_barrier_gradient = np.hstack([ grad_hij_pj, grad_hij_thetaj ])
 
         return barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse
     
-    def contour_plot(self, plot_obj, resolution=100):
+    def contour_plot(self, plot_obj, resolution=50):
         '''
         Return the parametrized ellipse graphics.
         '''

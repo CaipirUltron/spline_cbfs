@@ -39,12 +39,12 @@ spline_path = SplinePath( params=spline_params, init_path_state=[0.0] )
 
 # Initialize spline plot
 offset = 1
-min_x = np.min( spline_params["points"][:,0] ) - offset
-max_x = np.max( spline_params["points"][:,0] ) + offset
-min_y = np.min( spline_params["points"][:,1] ) - offset
-max_y = np.max( spline_params["points"][:,1] ) + offset
+
+coords = np.hstack([ spline_params["points"][:,0], spline_params["points"][:,1] ])
+min = np.min( coords ) - offset
+max = np.max( coords ) + offset
 plot_params = {
-    "axeslim": (min_x,max_x,min_y,max_y),
+    "axeslim": (min,max,min,max),
     "path_length": num_points + 1, 
     "numpoints": 200
 }

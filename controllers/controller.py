@@ -1,7 +1,8 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
-
+from controllers.graph import Graph
+import copy
 
 def sat(u, limits):
     '''
@@ -28,15 +29,19 @@ class PFController:
 
         # Dimensions and system model initialization
         self.vehicles = vehicles
-        self.num_vehicles = len(self.vehicles)
+        self.connectivity = parameters["connectivity"]
+        self.num_neighbors = len(self.connectivity)
+        self.num_vehicles = self.num_neighbors + 1
 
         self.system = self.vehicles[self.id]
         self.state_dim = self.system.n
         self.control_dim = self.system.m
 
         # Lane barriers defining the lane limits
-        self.lane_barriers = lane_barriers
-        self.num_lane_barriers = len(self.lane_barriers)
+        self.num_lane_barriers = len(lane_barriers)
+        self.lane_barriers = []
+        for lane in lane_barriers:
+            self.lane_barriers.append( copy.deepcopy(lane) )
 
         # Initialize control parameters
         self.q1, self.q2 = parameters["q1"], parameters["q2"]
@@ -60,7 +65,8 @@ class PFController:
         self.dgamma = 0.0
 
         # Additional parameters for trasient control
-        self.toggle_threshold = 1.0
+        self.toggle_threshold = np.max( self.system.barrier.shape )
+        # self.contact_graph = Graph({ robot:[] for robot in range(self.num_vehicles) })
 
     def set_path_speed(self, vd):
         '''
@@ -74,12 +80,6 @@ class PFController:
         Returns the controller path.
         '''
         return self.path
-
-    # def get_barriers(self):
-    #     '''
-    #     Returns the list lane barriers.
-    #     '''
-    #     return self.lane_barriers
 
     def get_control(self):
         '''
@@ -178,21 +178,20 @@ class PFController:
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
-        for neighbour_id in range(self.num_vehicles):
-            if neighbour_id != self.id:
-                f_neighbor = self.vehicles[neighbour_id].get_f()
-                gc_neighbor = self.vehicles[neighbour_id].get_gc()
+        for neighbour_id in self.connectivity:
+            f_neighbor = self.vehicles[neighbour_id].get_f()
+            gc_neighbor = self.vehicles[neighbour_id].get_gc()
 
-                h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
+            h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
 
-                Lfh = ( gc_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].control_dim) @ self.vehicles[neighbour_id].get_control()
-                Lgh = ( -gc.T @ grad_i_h ).reshape(self.control_dim)
+            Lfh = ( gc_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].m) @ self.vehicles[neighbour_id].get_control()
+            Lgh = ( -gc.T @ grad_i_h ).reshape(self.control_dim )
 
-                # Adds to the CBF constraints
-                a_cbf_k_list = [0 for i in range(self.QP1_dim)]
-                a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
-                a_cbf.append(a_cbf_k_list)
-                b_cbf.append( self.beta * h + Lfh )
+            # Adds to the CBF constraints
+            a_cbf_k_list = [0 for i in range(self.QP1_dim)]
+            a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
+            a_cbf.append(a_cbf_k_list)
+            b_cbf.append( self.beta * h + Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
@@ -208,7 +207,7 @@ class PFController:
         # Lane barriers for QP1
         a_cbf, b_cbf = [], []
         for lane_barrier in self.lane_barriers:
-            h, grad_h, spline_pt = lane_barrier.compute_barrier( self.system.barrier )
+            h, grad_h, _, _ = lane_barrier.compute_barrier( self.system.barrier )
 
             Lfh = 0.0
             Lgh = (-gc.T @ grad_h).reshape(self.control_dim)

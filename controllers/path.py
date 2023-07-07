@@ -258,4 +258,4 @@ class SplineBarrier(SplinePath):
         self.system.log_state()
         self.log_path()
 
-        return barrier_value, barrier_gradient, B_sol
+        return barrier_value, barrier_gradient, B_sol, gamma_sol

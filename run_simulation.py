@@ -40,8 +40,12 @@ gamma_logs, v_logs, gamma_barrier_logs = [], [], []
 for path in sim_module.paths:
     gamma_logs.append( path.logs["gamma"] )
     v_logs.append( path.logs["dgamma"] )
-for barrier in sim_module.barriers:
-    gamma_barrier_logs.append( barrier.logs["gamma"] )
+
+for controller in sim_module.controllers:
+    lane_barriers = controller.lane_barriers
+    gamma_barrier_logs.append([])
+    for lane_barrier in lane_barriers:
+        gamma_barrier_logs[-1].append( lane_barrier.logs["gamma"] )
 # ----------------------------------------------------------------------------------
 
 # Collect simulation logs and save in .json file ------------------------------------

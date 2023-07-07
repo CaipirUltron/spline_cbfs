@@ -97,3 +97,4 @@ class SplineEditor:
         self.ax.draw_artist(self.graph)
         self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
+        self.canvas.draw()
