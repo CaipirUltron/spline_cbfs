@@ -94,6 +94,6 @@ class QuadraticProgram():
         Method for solving the configured QP using quadprog.
         '''
         try:
-            self.last_solution = solve_qp(P=self.P, q=self.q, G=self.A, h=self.b, A=self.Aeq, b=self.beq, solver="quadprog")
+            self.last_solution = solve_qp(P=self.P, q=self.q, G=self.A, h=self.b, A=self.Aeq, b=self.beq, solver="daqp")
         except Exception as error:
             print(error)

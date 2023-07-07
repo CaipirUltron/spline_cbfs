@@ -30,21 +30,19 @@ class PFController:
         self.vehicles = vehicles
         self.num_vehicles = len(self.vehicles)
 
-        self.lane_barriers = lane_barriers
-        self.num_lane_barriers = len(self.lane_barriers)
-
         self.system = self.vehicles[self.id]
         self.state_dim = self.system.n
         self.control_dim = self.system.m
 
         # Lane barriers defining the lane limits
-        # self.lane_barriers = lane_barriers
+        self.lane_barriers = lane_barriers
+        self.num_lane_barriers = len(self.lane_barriers)
 
-        # Initialize parameters
+        # Initialize control parameters
         self.q1, self.q2 = parameters["q1"], parameters["q2"]
-        self.alpha1, self.alpha2 = parameters["alpha1"], parameters["alpha2"]
-        self.beta0 = parameters["beta0"]
-        self.radius = parameters["radius"]
+        self.alpha = parameters["alpha"]
+        self.beta = parameters["beta"]
+        self.kappa = parameters["kappa"]
         self.desired_path_speed = parameters["path_speed"]
 
         # QP for path stabilization
@@ -60,7 +58,6 @@ class PFController:
         q2 = np.hstack([ -self.desired_path_speed, 0.0 ])
         self.QP2 = QuadraticProgram(P=self.P2, q=q2)
         self.dgamma = 0.0
-        self.k_e = 0.1
 
         # Additional parameters for trasient control
         self.toggle_threshold = 1.0
@@ -115,20 +112,18 @@ class PFController:
         if not QP1_sol is None:
             self.u_ctrl = QP1_sol[0:self.control_dim,]
 
-        control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-np.pi, np.pi]) ])
-        # control = self.u_ctrl
+        # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-np.pi, np.pi]) ])
+        control = self.u_ctrl
 
         gamma = self.path.get_path_state()
         xd = self.path.get_path_point(gamma)
         dxd = self.path.get_path_gradient(gamma)
-        tilde_x = xd - self.system.get_state()[0:2]
+        tilde_x = self.system.get_state()[0:2] - xd
         if np.linalg.norm(tilde_x) >= self.toggle_threshold:
-            eta_e = tilde_x.dot( dxd )
-            self.dgamma = -sat(eta_e, limits=[-10.0,10.0])
+            eta_e = -tilde_x.dot( dxd )
+            self.dgamma = -self.kappa*sat(eta_e, limits=[-10.0,10.0])
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-            
-        self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
 
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
@@ -161,15 +156,15 @@ class PFController:
 
         # Lie derivatives
         if type(self.system == Unicycle): 
-            LfV = grad_V.dot( f[0:2] - dxd*dgamma   )
+            LfV = grad_V.dot( f[0:2] - dxd*dgamma )
             LgV = g[0:2,0:2].T.dot(grad_V)
         else:
-            LfV = grad_V.dot( f - dxd*dgamma   )
+            LfV = grad_V.dot( f - dxd*dgamma )
             LgV = g.T.dot(grad_V)
         
         # Stabilization CBF contraints
         a_clf = np.hstack( [ LgV, -1.0 ])
-        b_clf = -self.alpha1 * V - LfV
+        b_clf = -self.alpha * V - LfV
 
         return a_clf, b_clf
 
@@ -178,29 +173,26 @@ class PFController:
         Sets the barrier constraint for neighbor vehicles.
         '''
         # Affine system dynamics
-        f = self.system.get_f()[0:2]
-        g = self.system.get_g()[0:2,:]
+        f = self.system.get_f()
+        gc = self.system.get_gc()
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
         for neighbour_id in range(self.num_vehicles):
             if neighbour_id != self.id:
-                f_neighbor = self.vehicles[neighbour_id].get_f()[0:2]
-                g_neighbor = self.vehicles[neighbour_id].get_g()[0:2,:]
+                f_neighbor = self.vehicles[neighbour_id].get_f()
+                gc_neighbor = self.vehicles[neighbour_id].get_gc()
 
-                delx = self.system.get_state()[0:2] - self.vehicles[neighbour_id].get_state()[0:2]
-                delx_normalized = delx/np.linalg.norm(delx)
-                Distance = np.linalg.norm(delx)
+                h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
 
-                h = (Distance - 2*self.radius)
-                Lfh = delx_normalized.dot( f - f_neighbor - g_neighbor @ self.vehicles[neighbour_id].get_control() )
-                Lgh = -(g.T @ delx_normalized).reshape(self.control_dim)
+                Lfh = ( gc_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].control_dim) @ self.vehicles[neighbour_id].get_control()
+                Lgh = ( -gc.T @ grad_i_h ).reshape(self.control_dim)
 
                 # Adds to the CBF constraints
                 a_cbf_k_list = [0 for i in range(self.QP1_dim)]
                 a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
                 a_cbf.append(a_cbf_k_list)
-                b_cbf.append( self.beta0 * h + Lfh )
+                b_cbf.append( self.beta * h + Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
@@ -210,22 +202,22 @@ class PFController:
     def get_lane_cbf_constraint(self):
 
         # Affine system dynamics
-        g = self.system.get_g()[0:2,:]
-        p = self.system.get_state()[0:2]
+        # f = self.system.get_f()
+        gc = self.system.get_gc()
 
         # Lane barriers for QP1
         a_cbf, b_cbf = [], []
         for lane_barrier in self.lane_barriers:
-            h, dh = lane_barrier.get_barrier(p)
+            h, grad_h, spline_pt = lane_barrier.compute_barrier( self.system.barrier )
 
             Lfh = 0.0
-            Lgh = -(g.T @ dh).reshape(self.control_dim)
+            Lgh = (-gc.T @ grad_h).reshape(self.control_dim)
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
             a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
             a_cbf.append(a_cbf_k_list)
-            b_cbf.append( self.beta0 * h + Lfh )
+            b_cbf.append( self.beta * h + Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
