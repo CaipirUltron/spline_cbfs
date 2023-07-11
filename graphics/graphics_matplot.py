@@ -52,9 +52,10 @@ class Plot2DSimulation():
         self.fps = plot_config["fps"]
 
         # Initalize graphical objects
-        self.time_text = self.ax.text(plot_config["axeslim"][1]-10, plot_config["axeslim"][3]-3, str("Time = "))
+        self.time_text = self.ax.text(plot_config["axeslim"][1]-35, plot_config["axeslim"][3]-3, str("Time = "))
 
         self.robot_positions, self.robot_trajectories, self.robot_geometries, self.robot_ellipses, self.virtual_pts, self.arrows = [], [], [], [], [], []
+        self.ellipse_points = []
         for k in range(self.num_robots):
             robot_pos, = self.ax.plot([],[],lw=1,color=self.colors[k],marker='o',markersize=4.0)
             self.robot_positions.append(robot_pos)
@@ -78,6 +79,9 @@ class Plot2DSimulation():
             for j in range(self.num_barriers):
                 i_arrow, = self.ax.plot([],[], linestyle='dashed', lw=1.5, alpha=1.0, color=self.colors[k])
                 self.arrows[-1].append( i_arrow )
+
+            ellipse_pt, = self.ax.plot([],[],lw=1,color='green',marker='o',markersize=4.0)
+            self.ellipse_points.append(ellipse_pt)
 
         self.path_graphs = []
         for k in range(self.num_paths):
@@ -127,7 +131,7 @@ class Plot2DSimulation():
                 else: break
             self.barrier_graphs[i].set_data(xpath, ypath)
 
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts
+        graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.ellipse_points
         graphical_elements.append(self.time_text)
         for k in range(self.num_robots):
             graphical_elements += self.arrows[k]
@@ -140,7 +144,7 @@ class Plot2DSimulation():
         '''
         # Update simulation time graphics
         current_time = np.around(self.time[i], decimals = 2)
-        self.time_text.set_text("Time = " + str(current_time) + "s")
+        # self.time_text.set_text("Time = " + str(current_time) + "s")
 
         # Update robot graphics
         for k in range(self.num_robots):
@@ -158,7 +162,15 @@ class Plot2DSimulation():
 
             center_pose = np.hstack([ self.robots[k].geometry.get_center(pose), robot_angle ])
             self.robots[k].barrier.update_pose( center_pose )
-            self.robots[k].barrier.contour_plot(self.robot_ellipses[k])
+            self.robots[k].barrier.contour_plot( self.robot_ellipses[k] )
+
+            for j in range(self.num_robots):
+                if k != j:
+                    h, grad_i_h, grad_j_h, ellipse_pt = self.robots[k].barrier.compute_barrier( self.robots[j].barrier )
+                    # if k == 0:
+                    # self.time_text.set_text("dH " + str([k, j]) + " = " + str( dH ))
+                    self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
+                    self.ellipse_points[j].set_data(ellipse_pt[0], ellipse_pt[1])
 
             # Update barrier graphics (arrows)
             for j in range(self.num_barriers):
@@ -175,19 +187,11 @@ class Plot2DSimulation():
                 pos = self.paths[k].get_path_point(gamma)
                 self.virtual_pts[k].set_data(pos[0], pos[1])
 
-        # for k in range(self.num_barriers):
-
-        #     gamma = self.gamma_barrier_logs[k][i]
-        #     self.barriers[k].set_path_state(gamma)
-        #     normal = self.barriers[k].get_path_normal(gamma)
-        #     for j in range(self.num_robots):
-        #         _, _, spline_pt, _ = self.barriers[k].compute_barrier( self.robots[j].barrier )
-        #         self.arrows[k][j].set_data([ spline_pt[0], spline_pt[0] + normal[0]], [ spline_pt[1], spline_pt[1] + normal[1]])
-
         # Add artists
         graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
         graphical_elements += self.robot_ellipses
+        graphical_elements += self.ellipse_points
         for k in range(self.num_robots):
             graphical_elements += self.arrows[k]
             

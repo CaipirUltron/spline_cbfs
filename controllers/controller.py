@@ -65,8 +65,13 @@ class PFController:
         self.dgamma = 0.0
 
         # Additional parameters for trasient control
-        self.toggle_threshold = np.max( self.system.barrier.shape )
-        # self.contact_graph = Graph({ robot:[] for robot in range(self.num_vehicles) })
+        self.toggle_threshold = np.min( self.system.barrier.shape )
+
+        # Filter
+        self.ellipse_pt = np.zeros(2)
+        self.h = 0.0
+        self.Lfh = 0.0
+        self.Lgh = np.ones(self.control_dim)
 
     def set_path_speed(self, vd):
         '''
@@ -112,7 +117,9 @@ class PFController:
         if not QP1_sol is None:
             self.u_ctrl = QP1_sol[0:self.control_dim,]
 
-        # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-np.pi, np.pi]) ])
+        # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-10*np.pi, 10*np.pi]) ])
+        # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), self.u_ctrl[1] ])
+        # control = np.array([ self.u_ctrl[0], sat(self.u_ctrl[1], limits=[-10*np.pi, 10*np.pi]) ])
         control = self.u_ctrl
 
         gamma = self.path.get_path_state()
@@ -173,25 +180,31 @@ class PFController:
         Sets the barrier constraint for neighbor vehicles.
         '''
         # Affine system dynamics
-        f = self.system.get_f()
         gc = self.system.get_gc()
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
-        for neighbour_id in self.connectivity:
-            f_neighbor = self.vehicles[neighbour_id].get_f()
-            gc_neighbor = self.vehicles[neighbour_id].get_gc()
+        for id in self.connectivity:
+            if id == self.id:
+                continue # ignores itself
+            
+            gc_neighbor = self.vehicles[id].get_gc()
+            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[id].barrier )
+            self.Lfh = grad_j_h.T @ gc_neighbor @ self.vehicles[id].get_control()
+            self.Lgh = -( grad_i_h.T @ gc )
 
-            h, grad_i_h, grad_j_h, ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[neighbour_id].barrier )
-
-            Lfh = ( gc_neighbor.T @ grad_j_h ).reshape(self.vehicles[neighbour_id].m) @ self.vehicles[neighbour_id].get_control()
-            Lgh = ( -gc.T @ grad_i_h ).reshape(self.control_dim )
+            # if np.linalg.norm( new_ellipse_pt - self.ellipse_pt ) >= np.min(self.system.barrier.shape):
+            #     continue
+            # self.ellipse_pt = new_ellipse_pt
+            # self.h = h
+            # self.Lfh = Lfh
+            # self.Lgh = Lgh
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
-            a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
+            a_cbf_k_list[0:self.control_dim] = self.Lgh.tolist()
             a_cbf.append(a_cbf_k_list)
-            b_cbf.append( self.beta * h + Lfh )
+            b_cbf.append( self.beta * self.h + self.Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
@@ -201,7 +214,6 @@ class PFController:
     def get_lane_cbf_constraint(self):
 
         # Affine system dynamics
-        # f = self.system.get_f()
         gc = self.system.get_gc()
 
         # Lane barriers for QP1

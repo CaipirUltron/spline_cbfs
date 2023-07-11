@@ -1,6 +1,6 @@
 import numpy as np
 from qpsolvers import solve_qp
-
+from qpsolvers.solvers import available_solvers
 
 class QuadraticProgram():
     def __init__(self, **kwargs):
@@ -94,6 +94,9 @@ class QuadraticProgram():
         Method for solving the configured QP using quadprog.
         '''
         try:
-            self.last_solution = solve_qp(P=self.P, q=self.q, G=self.A, h=self.b, A=self.Aeq, b=self.beq, solver="daqp")
+            if "quadprog" in available_solvers:
+                self.last_solution = solve_qp(P=self.P, q=self.q, G=self.A, h=self.b, A=self.Aeq, b=self.beq, solver="quadprog")
+            else:
+                self.last_solution = solve_qp(P=self.P, q=self.q, G=self.A, h=self.b, A=self.Aeq, b=self.beq, solver="daqp")
         except Exception as error:
             print(error)

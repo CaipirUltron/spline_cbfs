@@ -1,13 +1,14 @@
 import numpy as np
 import scipy.optimize as opt
 
+S = np.array([ [0, -1], [1, 0] ])
 
 def rot(angle):
     return np.array([[ np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
 
-def drot(angle):
-    return np.array([[ -np.sin(angle), -np.cos(angle)], [np.cos(angle), -np.sin(angle)]])
+# def drot(angle):
+#     return np.array([[ -np.sin(angle), -np.cos(angle)], [np.cos(angle), -np.sin(angle)]])
 
 
 class Rect():
@@ -58,13 +59,15 @@ class EllipticalBarrier():
         self.shape = shape
         self.eigen = np.array([ 1/(self.shape[0]**2), 1/(self.shape[1]**2) ])
         self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
-        self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
+        # self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
+        self.dH = S @ self.H - self.H @ S
 
     def update_pose(self, new_pose):
         self.center = new_pose[0:2]
         self.orientation = new_pose[2]
         self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
-        self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
+        # self.dH = drot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T + rot(self.orientation) @ np.diag(self.eigen) @ drot(self.orientation).T
+        self.dH = S @ self.H - self.H @ S
 
     def ellipse(self, gamma):
         '''
@@ -84,15 +87,15 @@ class EllipticalBarrier():
 
         grad_pos = np.eye(2)
         grad_theta = np.array([ -a*np.cos(gamma)*np.sin(self.orientation) - b*np.sin(gamma)*np.cos(self.orientation),
-                                 a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) ])
-        return np.hstack([ grad_pos, grad_theta.reshape(2,1) ])
+                                 a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) ]).reshape(2,1)
+        return np.hstack([ grad_pos, grad_theta ])
 
     def function(self, value):
         return 0.5 * ( value - self.center ).T @ self.H @ ( value - self.center ) - 0.5
     
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
-        grad_hij_thetai = 0.5*( value - self.center ).T @ self.dH @ ( value - self.center )
+        grad_hij_thetai = 0.5 * ( value - self.center ).T @ self.dH @ ( value - self.center )
         return np.hstack([ grad_hij_pi, grad_hij_thetai ])
     
     def compute_barrier(self, neighbor_barrier, **kwargs):
@@ -108,12 +111,21 @@ class EllipticalBarrier():
         if "init" in kwargs.keys():
             init = kwargs["init"]
 
+        def initialization_cost(gamma):
+            ellipse_point = neighbor_barrier.ellipse(gamma)
+            return np.linalg.norm( ellipse_point - self.center )
+
         def cost(gamma):
             ellipse_point = neighbor_barrier.ellipse(gamma)
             return self.function( ellipse_point )
 
-        # Search over the neighbor ellipse boundary...
-        results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=0.0, ub=2*np.pi ) )
+        # Search for a good initializer at the ellipse...
+        # results = opt.minimize( initialization_cost, init, constraints=opt.LinearConstraint( np.array(1), lb=-np.pi, ub=np.pi ) )
+        # init = results.x
+
+        # Search over the neighbor ellipse...
+        # results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=-2*np.pi, ub=2*np.pi ) )
+        results = opt.minimize( cost, init )
         gamma_sol = results.x
         opt_ellipse = neighbor_barrier.ellipse(gamma_sol)
 
@@ -124,10 +136,10 @@ class EllipticalBarrier():
         # Neighbor barrier
         ellipse_jac = neighbor_barrier.ellipse_jacobian(gamma_sol)
 
-        grad_hij_pj = ((opt_ellipse - self.center) @ self.H @ ellipse_jac[:,0:2] ).reshape(2)
+        grad_hij_pj = (opt_ellipse - self.center).T @ self.H @ ellipse_jac[:,0:2]
         grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ ellipse_jac[:,2]
         neighbor_barrier_gradient = np.hstack([ grad_hij_pj, grad_hij_thetaj ])
-
+        
         return barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse
     
     def contour_plot(self, plot_obj, resolution=50):
