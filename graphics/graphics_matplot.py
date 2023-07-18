@@ -6,7 +6,7 @@ from matplotlib.patches import Rectangle
 
 class Plot2DSimulation():
 
-    def __init__(self, robots, paths, barriers, logs, **kwargs):
+    def __init__(self, robots, barrier_grid, paths, spline_barriers, logs, **kwargs):
         '''
         Initializes graphical objects.
         '''        
@@ -21,12 +21,13 @@ class Plot2DSimulation():
 
         self.colors = [ 'c', 'm', 'g' ]
         self.robots = robots
+        self.barrier_grid = barrier_grid
         self.paths = paths
-        self.barriers = barriers
+        self.spline_barriers = spline_barriers
 
         self.num_robots = len(self.robots)
         self.num_paths = len(self.paths)
-        self.num_barriers = len(self.barriers)
+        self.num_spline_barriers = len(self.spline_barriers)
         
         # Initialize plot objects
         self.fig, self.ax = plt.subplots()
@@ -76,7 +77,7 @@ class Plot2DSimulation():
             self.robot_geometries.append( robot_geometry )
 
             self.arrows.append([])
-            for j in range(self.num_barriers):
+            for j in range(self.num_spline_barriers):
                 i_arrow, = self.ax.plot([],[], linestyle='dashed', lw=1.5, alpha=1.0, color=self.colors[k])
                 self.arrows[-1].append( i_arrow )
 
@@ -92,7 +93,7 @@ class Plot2DSimulation():
             self.virtual_pts.append(virtual_pt)
 
         self.barrier_graphs = []
-        for k in range(self.num_barriers):
+        for k in range(self.num_spline_barriers):
             i_graph, = self.ax.plot([],[], lw=1.5, alpha=1.0, color='r')
             self.barrier_graphs.append( i_graph )
 
@@ -119,13 +120,13 @@ class Plot2DSimulation():
             self.path_graphs[i].set_data(xpath, ypath)
             self.virtual_pts[i].set_data([],[])
 
-        for i in range(self.num_barriers):
+        for i in range(self.num_spline_barriers):
             xpath, ypath = [], []
             for k in range(self.numpoints):
                 gamma = k*self.path_length/self.numpoints
                 # self.paths[i].set_path_state(gamma)
-                if gamma <= self.barriers[i].gamma_max:
-                    pos = self.barriers[i].get_path_point(gamma)
+                if gamma <= self.spline_barriers[i].gamma_max:
+                    pos = self.spline_barriers[i].get_path_point(gamma)
                     xpath.append(pos[0])
                     ypath.append(pos[1])
                 else: break
@@ -144,7 +145,7 @@ class Plot2DSimulation():
         '''
         # Update simulation time graphics
         current_time = np.around(self.time[i], decimals = 2)
-        # self.time_text.set_text("Time = " + str(current_time) + "s")
+        self.time_text.set_text("Time = " + str(current_time) + "s")
 
         # Update robot graphics
         for k in range(self.num_robots):
@@ -161,23 +162,28 @@ class Plot2DSimulation():
             self.ax.add_patch(self.robot_geometries[k])
 
             center_pose = np.hstack([ self.robots[k].geometry.get_center(pose), robot_angle ])
-            self.robots[k].barrier.update( center_pose )
-            self.robots[k].barrier.contour_plot( self.robot_ellipses[k] )
+
+            self.barrier_grid.update_barrier( k, center_pose )
+            self.barrier_grid.barriers[k].contour_plot( self.robot_ellipses[k] )
 
             for j in range(self.num_robots):
                 if k != j:
-                    h, grad_i_h, grad_j_h, ellipse_pt = self.robots[k].barrier.compute_barrier( self.robots[j].barrier )
-                    # if k == 0:
+                    robot_x, robot_y, robot_angle = self.robot_logs[j][0][i], self.robot_logs[j][1][i], self.robot_logs[j][2][i]
+                    pose = (robot_x, robot_y, robot_angle)
+                    center_pose = np.hstack([ self.robots[j].geometry.get_center(pose), robot_angle ])
+                    self.barrier_grid.update_barrier( j, center_pose )
+                    h, grad_i_h, grad_j_h, ellipse_pt = self.barrier_grid.compute_barrier( k, j )
                     # self.time_text.set_text("dH " + str([k, j]) + " = " + str( dH ))
+                    
                     self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
                     self.ellipse_points[j].set_data(ellipse_pt[0], ellipse_pt[1])
 
             # Update barrier graphics (arrows)
-            for j in range(self.num_barriers):
+            for j in range(self.num_spline_barriers):
                 gamma = self.gamma_barrier_logs[k][j][i]
-                self.barriers[j].set_path_state(gamma)
-                normal = self.barriers[j].get_path_normal(gamma)
-                _, _, spline_pt, _ = self.barriers[j].compute_barrier( self.robots[k].barrier )
+                self.spline_barriers[j].set_path_state(gamma)
+                normal = self.spline_barriers[j].get_path_normal(gamma)
+                _, _, spline_pt, _ = self.spline_barriers[j].compute_barrier( self.barrier_grid.barriers[k] )
                 self.arrows[k][j].set_data([ spline_pt[0], spline_pt[0] + normal[0]], [ spline_pt[1], spline_pt[1] + normal[1]])
 
         # Update path graphics

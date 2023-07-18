@@ -16,7 +16,7 @@ except IOError:
     print("Couldn't locate "+simulation_file + ".json")
 
 print('Animating simulation...')
-plotSim = Plot2DSimulation( sim.robots, sim.paths, sim.barriers, logs, plot_config = sim.plot_config )
+plotSim = Plot2DSimulation( sim.robots, sim.barrier_grid, sim.paths, sim.spline_barriers, logs, plot_config = sim.plot_config )
 plotSim.animate()
 
 # plotSim.animation.save(simulation_file + ".mp4", writer=anim.FFMpegWriter(fps=30, codec='h264'), dpi=100)

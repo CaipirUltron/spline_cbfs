@@ -1,7 +1,7 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
-from common import LinearMatrixPencil, BarrierGroup
+from common import LinearMatrixPencil, BarrierGrid
 import copy
 
 def sat(u, limits):
@@ -21,7 +21,7 @@ class PFController:
     '''
     This class implements a simple path following controller.
     '''
-    def __init__(self, vehicles, lane_barriers, parameters, id):
+    def __init__(self, vehicles, barrier_grid, spline_barriers, parameters, id):
 
         self.id = id
         self.path = parameters["path"]
@@ -33,15 +33,17 @@ class PFController:
         self.num_neighbors = len(self.connectivity)
         self.num_vehicles = self.num_neighbors + 1
 
-        self.system = self.vehicles[self.id]
-        self.state_dim = self.system.n
-        self.control_dim = self.system.m
+        self.vehicle = self.vehicles[self.id]
+        self.state_dim = self.vehicle.n
+        self.control_dim = self.vehicle.m
 
-        # Lane barriers defining the lane limits
-        self.num_lane_barriers = len(lane_barriers)
-        self.lane_barriers = []
-        for lane in lane_barriers:
-            self.lane_barriers.append( copy.deepcopy(lane) )
+        self.barrier_grid = barrier_grid
+
+        # Spline barriers defining the lane limits
+        self.num_spline_barriers = len(spline_barriers)
+        self.spline_barriers = []
+        for lane in spline_barriers:
+            self.spline_barriers.append( copy.deepcopy(lane) )
 
         # Initialize control parameters
         self.q1, self.q2 = parameters["q1"], parameters["q2"]
@@ -65,26 +67,13 @@ class PFController:
         self.dgamma = 0.0
 
         # Additional parameters for trasient control
-        self.toggle_threshold = np.min( self.system.barrier.shape )
+        self.toggle_threshold = np.min( self.barrier_grid.barriers[self.id].shape )
 
         # Filter
         self.ellipse_pt = np.zeros(2)
         self.h = 0.0
         self.Lfh = 0.0
         self.Lgh = np.ones(self.control_dim)
-
-        vehicle_barriers = []
-        for vehicle in self.vehicles:
-            vehicle_barriers.append( vehicle.barrier )
-        self.barrier_group = BarrierGroup(self.id, barriers = vehicle_barriers)
-
-    # def update_pencil(self, id):
-    #     '''
-    #     Updates pencil relative to id neighbor
-    #     '''
-    #     Hi = self.system.barrier.H
-    #     Hj = self.vehicles[id].barrier.H
-    #     self.pencils[id] = LinearMatrixPencil(Hj, Hi)
 
     def set_path_speed(self, vd):
         '''
@@ -138,13 +127,13 @@ class PFController:
         gamma = self.path.get_path_state()
         xd = self.path.get_path_point(gamma)
         dxd = self.path.get_path_gradient(gamma)
-        tilde_x = self.system.get_state()[0:2] - xd
+        tilde_x = self.vehicle.get_state()[0:2] - xd
         if np.linalg.norm(tilde_x) >= self.toggle_threshold:
             eta_e = -tilde_x.dot( dxd )
             self.dgamma = -self.kappa*sat(eta_e, limits=[-10.0,10.0])
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-
+        self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
 
@@ -157,8 +146,8 @@ class PFController:
         Sets the Lyapunov constraint for path stabilization.
         '''
         # Affine system dynamics
-        f = self.system.get_f()
-        g = self.system.get_g()
+        f = self.vehicle.get_f()
+        g = self.vehicle.get_g()
 
         # Path data
         gamma = self.path.get_path_state()
@@ -167,15 +156,15 @@ class PFController:
         dgamma = self.path.get_path_control()
 
         # Lyapunov function candidate
-        if type(self.system == Unicycle): 
-            tilde_x = self.system.get_state()[0:2] - xd
+        if type(self.vehicle == Unicycle): 
+            tilde_x = self.vehicle.get_state()[0:2] - xd
         else:
-            tilde_x = self.system.get_state() - xd
+            tilde_x = self.vehicle.get_state() - xd
         V = (1/2)*(tilde_x @ tilde_x)
         grad_V = tilde_x
 
         # Lie derivatives
-        if type(self.system == Unicycle): 
+        if type(self.vehicle == Unicycle): 
             LfV = grad_V.dot( f[0:2] - dxd*dgamma )
             LgV = g[0:2,0:2].T.dot(grad_V)
         else:
@@ -193,25 +182,26 @@ class PFController:
         Sets the barrier constraint for neighbor vehicles.
         '''
         # Affine system dynamics
-        gc = self.system.get_gc()
+        gc = self.vehicle.get_gc()
+        self.barrier_grid.update_barrier(self.id, self.vehicle.get_state())
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
         for id in self.connectivity:
             if id == self.id:
-                continue # ignores itself
-            
+                continue
+
+            self.barrier_grid.update_barrier(id, self.vehicles[id].get_state())
+
             gc_neighbor = self.vehicles[id].get_gc()
-            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.barrier_group.compute_barrier(id)
+            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.barrier_grid.compute_barrier(self.id, id)
             self.Lfh = grad_j_h.T @ gc_neighbor @ self.vehicles[id].get_control()
             self.Lgh = -( grad_i_h.T @ gc )
 
-            # if np.linalg.norm( new_ellipse_pt - self.ellipse_pt ) >= np.min(self.system.barrier.shape):
-            #     continue
-            # self.ellipse_pt = new_ellipse_pt
-            # self.h = h
-            # self.Lfh = Lfh
-            # self.Lgh = Lgh
+            self.Lfh = 0.0
+
+            # if id == 0:
+            #     print("Gradient = " + str(grad_j_h))
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
@@ -227,12 +217,12 @@ class PFController:
     def get_lane_cbf_constraint(self):
 
         # Affine system dynamics
-        gc = self.system.get_gc()
+        gc = self.vehicle.get_gc()
 
         # Lane barriers for QP1
         a_cbf, b_cbf = [], []
-        for lane_barrier in self.lane_barriers:
-            h, grad_h, _, _ = lane_barrier.compute_barrier( self.system.barrier )
+        for spline_barrier in self.spline_barriers:
+            h, grad_h, _, _ = spline_barrier.compute_barrier( self.barrier_grid.barriers[self.id] )
 
             Lfh = 0.0
             Lgh = (-gc.T @ grad_h).reshape(self.control_dim)
@@ -247,15 +237,3 @@ class PFController:
         b_cbf = np.array(b_cbf)
 
         return a_cbf, b_cbf
-
-# Old stuff -----------------------------------------------------------------------------------------------------------
-
-    def get_forward_constraint(self):
-        '''
-        Constraint to keep the vehicles moving forward if no conflict exists.
-        '''
-        a_forward, b_forward = np.array([]).reshape(0,self.QP2_dim), []
-        if not self.is_conflicting(self.id):
-            a_forward = np.array([ -1.0, 0.0 ])
-            b_forward = 0.0
-        return a_forward, b_forward

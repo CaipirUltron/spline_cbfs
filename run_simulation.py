@@ -1,13 +1,12 @@
 import sys, os
 import json
 import importlib
-import numpy as np
 
 simulation_config = sys.argv[1].replace(".json","")
 sim_module = importlib.import_module("simulations."+simulation_config+".simulation", package=None)
 
 # Simulation loop -------------------------------------------------------------------
-T = 20
+T = 15
 num_steps = int(T/sim_module.sample_time)
 time = []
 print('Running simulation...')
@@ -16,8 +15,8 @@ for step in range(0, num_steps):
     # Simulation time
     t = step*sim_module.sample_time
 
-    os.system('clear')
-    print("Simulating instant t = " + str(float(f'{t:.2f}')) + " s")
+    # os.system('clear')
+    # print("Simulating instant t = " + str(float(f'{t:.2f}')) + " s")
     time.append( t )
 
     # CPF controller for the robots
@@ -31,7 +30,6 @@ for step in range(0, num_steps):
     for k in range(len(sim_module.robots)):
         sim_module.robots[k].set_control(robot_controls[k])
         sim_module.robots[k].actuate(sim_module.sample_time)
-        
 # ----------------------------------------------------------------------------------
 
 # Collect simulation logs ----------------------------------------------------------
@@ -46,15 +44,14 @@ for path in sim_module.paths:
     v_logs.append( path.logs["dgamma"] )
 
 for controller in sim_module.controllers:
-    lane_barriers = controller.lane_barriers
     gamma_barrier_logs.append([])
-    for lane_barrier in lane_barriers:
-        gamma_barrier_logs[-1].append( lane_barrier.logs["gamma"] )
+    for spline_barrier in controller.spline_barriers:
+        gamma_barrier_logs[-1].append( spline_barrier.logs["gamma"] )
 # ----------------------------------------------------------------------------------
 
 # Collect simulation logs and save in .json file ------------------------------------
 logs = {
-    "time": time.tolist(),
+    "time": time,
     "sample_time": sim_module.sample_time,
     "robots": robot_logs,
     "control": control_logs,

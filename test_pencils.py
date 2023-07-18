@@ -2,15 +2,14 @@ import numpy as np
 from common import EllipticalBarrier, BarrierGrid
 import matplotlib.pyplot as plt
 
-num_barriers = 2
 barrier1 = EllipticalBarrier(shape=[2,1])
 barrier2 = EllipticalBarrier(shape=[2,1])
 
-barrier1.update( np.random.rand(3)-0.5 )
-barrier2.update( 4*np.random.rand(3)-2 )
-barriers = [barrier1, barrier2]
+barrier_grid = BarrierGrid( barriers = [barrier1, barrier2] )
+barrier_grid.update_barrier(0, np.random.rand(3)-0.5)
+barrier_grid.update_barrier(1, 10*np.random.rand(3)-5)
+num_barriers = len(barrier_grid.barriers)
 
-barrier_grid = BarrierGrid( barriers = barriers )
 barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse = barrier_grid.compute_barrier(0,1)
 
 print("Barrier value = " + str(barrier_value))

@@ -94,58 +94,7 @@ class EllipticalBarrier():
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
         grad_hij_thetai = 0.5 * ( value - self.center ).T @ self.dH @ ( value - self.center )
-        return np.hstack([ grad_hij_pi, grad_hij_thetai ])        
-
-    # def compute_barrier(self, neighbor_barrier, **kwargs):
-    #     '''
-    #     Computes vehicle barrier (between self and barrier_obj).
-    #     Returns:
-    #     i) barrier value
-    #     ii) barrier gradient
-    #     iii) optimal point on barrier_obj ellipse
-    #     '''
-    #     init = self.center
-
-    #     if "init" in kwargs.keys():
-    #         init = kwargs["init"]
-
-    #     def constr(delta):
-    #         return neighbor_barrier.function(delta)
-
-    #     def cost(delta):
-    #         return self.function(delta)
-
-    #     # Search over the neighbor ellipse...
-    #     # results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=-2*np.pi, ub=2*np.pi ) )
-    #     results = opt.minimize( cost, init, constraints=opt.NonlinearConstraint( constr, 0, 0 ) )
-    #     opt_ellipse = results.x
-
-    #     # Self barrier
-    #     barrier_value = self.function(opt_ellipse)
-    #     barrier_gradient = self.gradient(opt_ellipse)
-
-    #     # Determine the gamma equivalent solution
-    #     def cost_gamma(gamma):
-    #         return np.linalg.norm( opt_ellipse - neighbor_barrier.ellipse(gamma) )
-        
-    #     results1 = opt.minimize( cost_gamma, -np.pi/2, constraints=opt.LinearConstraint( np.array(1), lb=-np.pi, ub=np.pi ) )
-    #     results2 = opt.minimize( cost_gamma,  np.pi/2, constraints=opt.LinearConstraint( np.array(1), lb=0 , ub=np.pi ) )
-
-    #     cost1 = cost_gamma(results1.x)
-    #     cost2 = cost_gamma(results2.x)
-
-    #     gamma_sol = results2.x
-    #     if cost1 <= cost2:
-    #         gamma_sol = results1.x
-
-    #     # Neighbor barrier
-    #     ellipse_jac = neighbor_barrier.ellipse_jacobian(gamma_sol)
-
-    #     grad_hij_pj = (opt_ellipse - self.center).T @ self.H @ ellipse_jac[:,0:2]
-    #     grad_hij_thetaj = ( opt_ellipse - self.center ).T @ self.H @ ellipse_jac[:,2]
-    #     neighbor_barrier_gradient = np.hstack([ grad_hij_pj, grad_hij_thetaj ])
-        
-    #     return barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse
+        return np.hstack([ grad_hij_pi, grad_hij_thetai ])
     
     def contour_plot(self, plot_obj, resolution=50):
         '''
@@ -310,7 +259,6 @@ class LinearMatrixPencil():
                 if sol_left.success and sol_right.success:
                     if np.abs( sol_left.x[0] - sol_right.x[0] ) < ZERO_ACCURACY:
                         equal = True
-
                 if equal:
                     lambda_candidates.append( transf( sol_left.x[0] ) )
                 else:
@@ -362,6 +310,20 @@ class BarrierGrid():
                 Hj = self.barriers[idj].H
                 self.pencils[idi,idj] = LinearMatrixPencil(Hj, Hi)
 
+    def update_barrier(self, id, new_pose):
+        '''
+        Update barrier with identifier id and all corresponding pencils.
+        '''
+        self.barriers[id].update( new_pose )
+        for i in range(self.pencils.shape[0]):
+            for j in range(self.pencils.shape[1]):
+                if i == j:
+                    continue
+                if i == id:
+                    self.pencils[id,j].update( self.pencils[id,j]._A, self.barriers[id].H )
+                if j == id:
+                    self.pencils[i,id].update( self.barriers[id].H, self.pencils[i,id]._B )
+
     def compute_barrier(self, idi, idj):
         '''
         Computes vehicle barrier (between barriers[id1] and barriers[id2] ).
@@ -394,10 +356,10 @@ class BarrierGrid():
         # Filters solutions with positive cost and lambda (geometrically incorrect)
         index_sol = np.argmin(costs)
 
-        print("Costs = " + str(costs))
-        print("Lambda solutions = " + str(lambda_sols))
+        # print("Costs = " + str(costs))
+        # print("Lambda solutions = " + str(lambda_sols))
 
-        opt_ellipse = delta_sols[:,index_sol].reshape(2)
+        opt_ellipse = delta_sols[:,index_sol]
 
         barrier_value = barrieri.function(opt_ellipse)
         barrier_gradient = barrieri.gradient(opt_ellipse)
@@ -406,15 +368,19 @@ class BarrierGrid():
         def cost_gamma(gamma):
             return np.linalg.norm( opt_ellipse - barrierj.ellipse(gamma) )
         
-        results1 = opt.minimize( cost_gamma, -np.pi/2, constraints=opt.LinearConstraint( np.array(1), lb=-np.pi, ub=np.pi ) )
-        results2 = opt.minimize( cost_gamma,  np.pi/2, constraints=opt.LinearConstraint( np.array(1), lb=0 , ub=np.pi ) )
+        results1 = opt.root( cost_gamma, -np.pi/2, method='lm' )
+        results2 = opt.root( cost_gamma,  np.pi/2, method='lm' )
 
-        cost1 = cost_gamma(results1.x)
-        cost2 = cost_gamma(results2.x)
+        gamma_costs = np.array([ cost_gamma(results1.x[0]), cost_gamma(results2.x[0]) ])
+        results = np.array([ results1.x[0], results2.x[0] ])
 
-        gamma_sol = results2.x
-        if cost1 <= cost2:
-            gamma_sol = results1.x
+        if np.all(gamma_costs > ZERO_ACCURACY):
+            print(gamma_costs)
+
+        gamma_sol = results[ np.argmin(gamma_costs) ]
+
+        if np.linalg.norm(opt_ellipse - barrierj.ellipse(gamma_sol)) > ZERO_ACCURACY:
+            print( opt_ellipse - barrierj.ellipse(gamma_sol) )
 
         # Neighbor barrier
         ellipse_jac = barrierj.ellipse_jacobian(gamma_sol)
@@ -424,3 +390,16 @@ class BarrierGrid():
         neighbor_barrier_gradient = np.hstack([ grad_hij_pj, grad_hij_thetaj ])
         
         return barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse
+    
+    def check_errors(self):
+        '''
+        Provisory function for checking errors in array of LinearMatrixPencils (all is right)
+        '''
+        error_matrix = np.zeros([self.num_barriers, self.num_barriers])
+        for i in range(self.pencils.shape[0]):
+            for j in range(self.pencils.shape[1]):
+                if i == j:
+                    continue
+                error_matrix[i,j] = np.linalg.norm(self.pencils[i,j]._A - self.barriers[j].H) + np.linalg.norm(self.pencils[i,j]._B - self.barriers[i].H)
+
+        return error_matrix
