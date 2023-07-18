@@ -33,11 +33,11 @@ barriers = []
 sample_time = 0.005
 
 controller_parameters1 = { 
-    "sample_time": sample_time, "path": paths[0], "path_speed": 10.0,
+    "sample_time": sample_time, "path": paths[0], "path_speed": 8.0,
     "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.1, "connectivity": connectivity[0] }
 
 controller_parameters2 = { 
-    "sample_time": sample_time, "path": paths[1], "path_speed": 6.0,
+    "sample_time": sample_time, "path": paths[1], "path_speed": 10.0,
     "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.1, "connectivity": connectivity[1] }
 
 # Create QP controller and graphical simulation.

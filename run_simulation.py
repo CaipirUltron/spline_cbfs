@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import json
 import importlib
 import numpy as np
@@ -9,12 +9,16 @@ sim_module = importlib.import_module("simulations."+simulation_config+".simulati
 # Simulation loop -------------------------------------------------------------------
 T = 20
 num_steps = int(T/sim_module.sample_time)
-time = np.zeros(num_steps)
+time = []
 print('Running simulation...')
 for step in range(0, num_steps):
 
     # Simulation time
-    time[step] = step*sim_module.sample_time
+    t = step*sim_module.sample_time
+
+    os.system('clear')
+    print("Simulating instant t = " + str(float(f'{t:.2f}')) + " s")
+    time.append( t )
 
     # CPF controller for the robots
     robot_controls = []

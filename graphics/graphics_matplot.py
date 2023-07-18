@@ -161,7 +161,7 @@ class Plot2DSimulation():
             self.ax.add_patch(self.robot_geometries[k])
 
             center_pose = np.hstack([ self.robots[k].geometry.get_center(pose), robot_angle ])
-            self.robots[k].barrier.update_pose( center_pose )
+            self.robots[k].barrier.update( center_pose )
             self.robots[k].barrier.contour_plot( self.robot_ellipses[k] )
 
             for j in range(self.num_robots):

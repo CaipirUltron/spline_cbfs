@@ -192,7 +192,7 @@ class Unicycle(AffineSystem):
         super().actuate(dt)
         center = self.geometry.get_center( self.get_state() )
         new_pose = np.hstack([ center, self._state[2] ])
-        self.barrier.update_pose(new_pose)
+        self.barrier.update(new_pose)
 
     def f(self):
         self._f = np.zeros(self.n)

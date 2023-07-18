@@ -1,7 +1,7 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
-from controllers.graph import Graph
+from common import LinearMatrixPencil, BarrierGroup
 import copy
 
 def sat(u, limits):
@@ -72,6 +72,19 @@ class PFController:
         self.h = 0.0
         self.Lfh = 0.0
         self.Lgh = np.ones(self.control_dim)
+
+        vehicle_barriers = []
+        for vehicle in self.vehicles:
+            vehicle_barriers.append( vehicle.barrier )
+        self.barrier_group = BarrierGroup(self.id, barriers = vehicle_barriers)
+
+    # def update_pencil(self, id):
+    #     '''
+    #     Updates pencil relative to id neighbor
+    #     '''
+    #     Hi = self.system.barrier.H
+    #     Hj = self.vehicles[id].barrier.H
+    #     self.pencils[id] = LinearMatrixPencil(Hj, Hi)
 
     def set_path_speed(self, vd):
         '''
@@ -189,7 +202,7 @@ class PFController:
                 continue # ignores itself
             
             gc_neighbor = self.vehicles[id].get_gc()
-            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.system.barrier.compute_barrier( self.vehicles[id].barrier )
+            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.barrier_group.compute_barrier(id)
             self.Lfh = grad_j_h.T @ gc_neighbor @ self.vehicles[id].get_control()
             self.Lgh = -( grad_i_h.T @ gc )
 
