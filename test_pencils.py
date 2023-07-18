@@ -3,8 +3,8 @@ from common import EllipticalBarrier, BarrierGrid
 import matplotlib.pyplot as plt
 
 num_barriers = 2
-barrier1 = EllipticalBarrier(shape=np.random.rand(2))
-barrier2 = EllipticalBarrier(shape=np.random.rand(2))
+barrier1 = EllipticalBarrier(shape=[2,1])
+barrier2 = EllipticalBarrier(shape=[2,1])
 
 barrier1.update( np.random.rand(3)-0.5 )
 barrier2.update( 4*np.random.rand(3)-2 )

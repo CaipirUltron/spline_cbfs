@@ -252,8 +252,6 @@ class LinearMatrixPencil():
         self.eigenvalues = self.eigenvalues[sorted_args]
         self.eigenvectors = self.eigenvectors[:,sorted_args]
 
-        print("Pencil eigenvalues = " + str(self.eigenvalues))
-
     def solve_system(self, w):
         '''
         Given know p.s.d. matrices A, B and vector w,
@@ -272,7 +270,7 @@ class LinearMatrixPencil():
             return - vhi.T @ Hinv @ vhi
 
         lambda_candidates = []
-        for i in range(len(self.eigenvalues)):
+        for i in range(len(self.eigenvalues)+1):
             if i == 0:
                 left_limit = self.eigenvalues[i]
                 transf = lambda x : LinearMatrixPencil.nlr_transform_left(x, left_limit)
@@ -283,7 +281,7 @@ class LinearMatrixPencil():
                 if sol.success:
                     lambda_candidates.append( transf( sol.x[0] ) )
             elif i == len(self.eigenvalues):
-                right_limit = self.eigenvalues[i]
+                right_limit = self.eigenvalues[-1]
                 transf = lambda x : LinearMatrixPencil.nlr_transform_right(x, right_limit)
                 inv_transf = lambda x : LinearMatrixPencil.inv_nlr_transform_right(x, right_limit)
                 init_guess = self.eigenvalues[-1] + self.param/(1-self.param)
@@ -300,18 +298,13 @@ class LinearMatrixPencil():
                 delta_lambda = self.eigenvalues[i] - self.eigenvalues[i-1]
                 init_guess = self.eigenvalues[i-1] + self.param * delta_lambda/2
                 sol = opt.root(compute_qder, inv_transf(init_guess), method='lm')
-                interval_min = transf( sol.x[0] )
+                interval_min = sol.x[0]
                 
-                print("Interval = " + str([ self.eigenvalues[i-1], interval_min, self.eigenvalues[i] ]))
-
-                delta_left = interval_min - self.eigenvalues[i-1]
-                delta_right = self.eigenvalues[i] - interval_min
-
                 # Find root
-                init_guess_left = interval_min - (self.param * delta_left)
-                init_guess_right = interval_min + (self.param * delta_right)
-                sol_left = opt.root(compute_f, inv_transf(init_guess_left), method='lm')
-                sol_right = opt.root(compute_f, inv_transf(init_guess_right), method='lm')
+                init_guess_left = interval_min - self.param/(1-self.param)
+                init_guess_right = interval_min + self.param/(1-self.param)
+                sol_left = opt.root(compute_f, init_guess_left, method='lm')
+                sol_right = opt.root(compute_f, init_guess_right, method='lm')
                 
                 equal = False
                 if sol_left.success and sol_right.success:
@@ -325,7 +318,7 @@ class LinearMatrixPencil():
                         lambda_candidates.append( transf( sol_left.x[0] ) )
                     if sol_right.success:
                         lambda_candidates.append( transf( sol_right.x[0] ) )
-        
+
         num_sols = 0
         lambda_solutions = []
         v_solutions = []
@@ -337,7 +330,7 @@ class LinearMatrixPencil():
                 lambda_solutions.append(lambda_candidate)
                 num_sols += 1
 
-        return lambda_solutions, np.array(v_solutions).reshape(2,num_sols)
+        return lambda_solutions, np.array(v_solutions).T
 
     def __str__(self):         
         '''
@@ -359,15 +352,15 @@ class BarrierGrid():
         self.num_barriers = len(barriers)
         self.barriers = barriers
 
-        self.pencils = [ [None]*self.num_barriers for i in range(self.num_barriers) ]
+        self.pencils = np.array([ [None]*self.num_barriers for i in range(self.num_barriers) ])
 
-        for id1 in range(self.num_barriers):
-            for id2 in range(self.num_barriers):
-                if id1 == id2:
+        for idi in range(self.num_barriers):
+            for idj in range(self.num_barriers):
+                if idi == idj:
                     continue
-                Hi = self.barriers[id1].H
-                Hj = self.barriers[id2].H
-                self.pencils[id2][id1] = LinearMatrixPencil(Hj, Hi)
+                Hi = self.barriers[idi].H
+                Hj = self.barriers[idj].H
+                self.pencils[idi,idj] = LinearMatrixPencil(Hj, Hi)
 
     def compute_barrier(self, idi, idj):
         '''
@@ -385,7 +378,7 @@ class BarrierGrid():
         pci = np.array(barrieri.center)
         pcj = np.array(barrierj.center)
         wij = Hi @ ( pcj - pci )
-        lambda_sols, v_sols = self.pencils[idj][idi].solve_system( wij )
+        lambda_sols, v_sols = self.pencils[idi,idj].solve_system( wij )
         num_sols = len( lambda_sols )
 
         # Converts back to solution in terms of delta
@@ -402,9 +395,9 @@ class BarrierGrid():
         index_sol = np.argmin(costs)
 
         print("Costs = " + str(costs))
-        print("Lambdas = " + str(lambda_sols))
+        print("Lambda solutions = " + str(lambda_sols))
 
-        opt_ellipse = delta_sols[:, index_sol].reshape(2)
+        opt_ellipse = delta_sols[:,index_sol].reshape(2)
 
         barrier_value = barrieri.function(opt_ellipse)
         barrier_gradient = barrieri.gradient(opt_ellipse)
