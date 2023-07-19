@@ -47,9 +47,7 @@ class PFController:
 
         # Initialize control parameters
         self.q1, self.q2 = parameters["q1"], parameters["q2"]
-        self.alpha = parameters["alpha"]
-        self.beta = parameters["beta"]
-        self.kappa = parameters["kappa"]
+        self.alpha, self.beta, self.kappa = parameters["alpha"], parameters["beta"], parameters["kappa"]
         self.desired_path_speed = parameters["path_speed"]
 
         # QP for path stabilization
@@ -133,7 +131,9 @@ class PFController:
             self.dgamma = -self.kappa*sat(eta_e, limits=[-10.0,10.0])
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-        self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
+        
+        # self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
+        
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
 
@@ -183,7 +183,8 @@ class PFController:
         '''
         # Affine system dynamics
         gc = self.vehicle.get_gc()
-        self.barrier_grid.update_barrier(self.id, self.vehicle.get_state())
+        center_state = self.vehicle.get_center_state()
+        self.barrier_grid.update_barrier(self.id, center_state)
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
@@ -191,14 +192,15 @@ class PFController:
             if id == self.id:
                 continue
 
-            self.barrier_grid.update_barrier(id, self.vehicles[id].get_state())
+            center_state_neighbor = self.vehicles[id].get_center_state()
+            self.barrier_grid.update_barrier(id, center_state_neighbor)
 
             gc_neighbor = self.vehicles[id].get_gc()
             self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.barrier_grid.compute_barrier(self.id, id)
             self.Lfh = grad_j_h.T @ gc_neighbor @ self.vehicles[id].get_control()
             self.Lgh = -( grad_i_h.T @ gc )
 
-            self.Lfh = 0.0
+            # self.Lfh = 0.0
 
             # if id == 0:
             #     print("Gradient = " + str(grad_j_h))

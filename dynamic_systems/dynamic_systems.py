@@ -185,6 +185,11 @@ class Unicycle(AffineSystem):
         self.f()
         self.g()
 
+    def get_center_state(self):
+        state = self.get_state()
+        center = self.geometry.get_center(state)
+        return np.array([ center[0], center[1], state[2] ])
+
     def f(self):
         self._f = np.zeros(self.n)
 

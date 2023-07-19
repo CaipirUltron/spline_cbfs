@@ -134,6 +134,7 @@ class Plot2DSimulation():
 
         graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.ellipse_points
         graphical_elements.append(self.time_text)
+        graphical_elements += self.robot_ellipses
         for k in range(self.num_robots):
             graphical_elements += self.arrows[k]
         
@@ -155,25 +156,24 @@ class Plot2DSimulation():
             self.robot_trajectories[k].set_data(xdata, ydata)
 
             robot_x, robot_y, robot_angle = self.robot_logs[k][0][i], self.robot_logs[k][1][i], self.robot_logs[k][2][i]
-            pose = (robot_x, robot_y, robot_angle)
+            pose = [robot_x, robot_y, robot_angle]
+            self.robots[k].set_state(pose)
+
             self.robot_geometries[k].xy = self.robots[k].geometry.get_corners(pose, "bottomleft")
             self.robot_geometries[k].angle = np.rad2deg(robot_angle)
 
             self.ax.add_patch(self.robot_geometries[k])
 
-            center_pose = np.hstack([ self.robots[k].geometry.get_center(pose), robot_angle ])
-
-            self.barrier_grid.update_barrier( k, center_pose )
+            self.barrier_grid.update_barrier( k, self.robots[k].get_center_state() )
             self.barrier_grid.barriers[k].contour_plot( self.robot_ellipses[k] )
 
             for j in range(self.num_robots):
                 if k != j:
                     robot_x, robot_y, robot_angle = self.robot_logs[j][0][i], self.robot_logs[j][1][i], self.robot_logs[j][2][i]
-                    pose = (robot_x, robot_y, robot_angle)
-                    center_pose = np.hstack([ self.robots[j].geometry.get_center(pose), robot_angle ])
-                    self.barrier_grid.update_barrier( j, center_pose )
+                    pose = [robot_x, robot_y, robot_angle]
+                    self.robots[j].set_state(pose)
+                    self.barrier_grid.update_barrier( j, self.robots[j].get_center_state() )
                     h, grad_i_h, grad_j_h, ellipse_pt = self.barrier_grid.compute_barrier( k, j )
-                    # self.time_text.set_text("dH " + str([k, j]) + " = " + str( dH ))
                     
                     self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
                     self.ellipse_points[j].set_data(ellipse_pt[0], ellipse_pt[1])
