@@ -231,10 +231,7 @@ class SplineBarrier(SplinePath):
     def compute_barrier(self, barrier, **kwargs):
         '''
         Method for computing minimum value of barrier over the spline. Note: it updates the path state.
-        Returns:
-        i) barrier value
-        ii) barrier gradient
-        iii) optimal point on spline
+        Returns: i) barrier value, ii) barrier gradient, iii) optimal point on spline
         '''
         init = self.get_path_state()
         # init = np.random.randint(self.gamma_min, self.gamma_max)
@@ -247,7 +244,7 @@ class SplineBarrier(SplinePath):
         
         # Search over the spline...
         results = opt.minimize( cost, init, constraints=opt.LinearConstraint( np.array(1), lb=self.gamma_min, ub=self.gamma_max ) )
-        gamma_sol = results.x
+        gamma_sol = results.x[0]
 
         B_sol = self.get_path_point(gamma_sol)
 

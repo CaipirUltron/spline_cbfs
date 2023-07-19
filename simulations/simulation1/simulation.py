@@ -18,16 +18,16 @@ barrier1, barrier2 = EllipticalBarrier(shape=[2.0, 1.2]), EllipticalBarrier(shap
 barrier_grid = BarrierGrid(barriers = [barrier1, barrier2])
 
 ############################ Loaded spline parameters: path_params, barrier_params #########################################
-paths, recommended_init_states = [], []
+paths, recommended_init_positions = [], []
 print(str(len(path_params)) + " available paths: ")
 for path_param in path_params:
     print(path_params)
     path = SplinePath( params=path_param, init_path_state=[0.0] )
     paths.append(path)
-    recommended_init_states.append( np.hstack([ path.get_path_point(0.0), np.random.rand() ]) )
+    recommended_init_positions.append( path.get_path_point(0.0) )
 
-for k in range(len(robots)):
-    robots[k].set_state( recommended_init_states[k] )
+robots[0].set_state( np.hstack([ recommended_init_positions[0], np.pi/4 ]) )
+robots[1].set_state( np.hstack([ recommended_init_positions[1], np.pi/4 ]) )
 
 radius = 1.0
 
@@ -42,11 +42,11 @@ sample_time = 0.004
 
 controller_parameters1 = { 
     "sample_time": sample_time, "path": paths[0], "path_speed": 6.0,
-    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.1, "connectivity": connectivity[0] }
+    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.001, "connectivity": connectivity[0] }
 
 controller_parameters2 = { 
     "sample_time": sample_time, "path": paths[1], "path_speed": 8.0,
-    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.1, "connectivity": connectivity[1] }
+    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.001, "connectivity": connectivity[1] }
 
 # Create QP controller and graphical simulation.
 controller1 = PFController(robots, barrier_grid, spline_barriers, controller_parameters1, id=0)

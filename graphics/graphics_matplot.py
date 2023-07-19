@@ -175,7 +175,7 @@ class Plot2DSimulation():
                     self.barrier_grid.update_barrier( j, self.robots[j].get_center_state() )
                     h, grad_i_h, grad_j_h, ellipse_pt = self.barrier_grid.compute_barrier( k, j )
                     
-                    self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
+                    # self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
                     self.ellipse_points[j].set_data(ellipse_pt[0], ellipse_pt[1])
 
             # Update barrier graphics (arrows)
