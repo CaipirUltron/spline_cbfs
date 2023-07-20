@@ -138,7 +138,7 @@ class LinearMatrixPencil():
         '''
         Initialize pencil.
         '''
-        self.param = 0.5
+        self.param = 0.9
         self.update(A, B)
 
     def update(self, A, B):
@@ -166,9 +166,12 @@ class LinearMatrixPencil():
         Returns the q-function value at lambda and w.
         '''
         H = self.value(lambda_param)
-        wl = np.linalg.inv(H) @ w
-        return wl.T @ self._A @ wl
-
+        try:
+            wl = np.linalg.inv(H) @ w
+            return wl.T @ self._A @ wl
+        except np.linalg.LinAlgError:
+            return np.inf
+    
     def compute_eigen(self):
         '''
         Computes the generalized eigenvalues and eigenvectors of the pencil.
@@ -218,7 +221,7 @@ class LinearMatrixPencil():
             vhi = self._A @ Hinv @ w
             return - vhi.T @ Hinv @ vhi
 
-        lambda_candidates = []
+        lambda_candidates, costs = [], []
         for i in range(len(self.eigenvalues)+1):
             if i == 0:
                 left_limit = self.eigenvalues[i]
@@ -228,7 +231,9 @@ class LinearMatrixPencil():
 
                 sol = opt.root(compute_f, inv_transf(init_guess), method='lm')
                 if sol.success:
-                    lambda_candidates.append( transf( sol.x[0] ) )
+                    lambda_candidate = transf( sol.x[0] )
+                    lambda_candidates.append( lambda_candidate )
+                    costs.append( compute_f(inv_transf( lambda_candidate )) )
             elif i == len(self.eigenvalues):
                 right_limit = self.eigenvalues[-1]
                 transf = lambda x : LinearMatrixPencil.nlr_transform_right(x, right_limit)
@@ -237,7 +242,9 @@ class LinearMatrixPencil():
 
                 sol = opt.root(compute_f, inv_transf(init_guess), method='lm')
                 if sol.success:
-                    lambda_candidates.append( transf( sol.x[0] ) )
+                    lambda_candidate = transf( sol.x[0] )
+                    lambda_candidates.append( lambda_candidate )
+                    costs.append( compute_f(inv_transf( lambda_candidate )) )
             else:
                 limits = [ self.eigenvalues[i-1], self.eigenvalues[i] ] 
                 transf = lambda x : LinearMatrixPencil.nlr_transform_middle(x, limits)
@@ -260,23 +267,30 @@ class LinearMatrixPencil():
                     if np.abs( sol_left.x[0] - sol_right.x[0] ) < ZERO_ACCURACY:
                         equal = True
                 if equal:
-                    lambda_candidates.append( transf( sol_left.x[0] ) )
+                    lambda_candidate = transf( sol_left.x[0] )
+                    lambda_candidates.append( lambda_candidate )
+                    costs.append( compute_f(inv_transf( lambda_candidate )) )
                 else:
                     if sol_left.success:
-                        lambda_candidates.append( transf( sol_left.x[0] ) )
+                        lambda_candidate = transf( sol_left.x[0] )
+                        lambda_candidates.append( lambda_candidate )
+                        costs.append( compute_f(inv_transf( lambda_candidate )) )
                     if sol_right.success:
-                        lambda_candidates.append( transf( sol_right.x[0] ) )
+                        lambda_candidate = transf( sol_right.x[0] )
+                        lambda_candidates.append( lambda_candidate )
+                        costs.append( compute_f(inv_transf( lambda_candidate )) )
 
-        num_sols = 0
-        lambda_solutions = []
+        costs = np.array(costs)
+        lambda_candidates = np.array(lambda_candidates)
+
+        indexes_sol = np.argwhere(costs < ZERO_ACCURACY)
+        lambda_solutions = lambda_candidates[indexes_sol.T].reshape(indexes_sol.shape[0])
+
         v_solutions = []
-        for lambda_candidate in lambda_candidates:
-            H = self.value( lambda_candidate )
+        for lambda_solution in lambda_solutions:
+            H = self.value( lambda_solution )
             v = np.linalg.inv(H) @ w
-            if np.abs( v.T @ self._A @ v - 1 ) < ZERO_ACCURACY:
-                v_solutions.append(v)
-                lambda_solutions.append(lambda_candidate)
-                num_sols += 1
+            v_solutions.append(v)
 
         return lambda_solutions, np.array(v_solutions).T
 

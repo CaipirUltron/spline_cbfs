@@ -203,11 +203,15 @@ class Plot2DSimulation():
             
         return graphical_elements
 
-    def animate(self):
+    def animate(self, *args):
         '''
         Show animation.
         '''
-        self.animation = anim.FuncAnimation(self.fig, func=self.update, init_func=self.init, frames=self.num_steps, interval=1000/self.fps, repeat=False, blit=True)
+        initial_time = 0
+        if len(args) > 0:
+            initial_time = args[0]
+        initial_step = int(np.floor(initial_time/self.sample_time))
+        self.animation = anim.FuncAnimation(self.fig, func=self.update, init_func=self.init, frames=range(initial_step, self.num_steps), interval=1000/self.fps, repeat=False, blit=True)
         plt.show()
 
     def get_frame(self, t):
