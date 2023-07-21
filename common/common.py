@@ -60,7 +60,7 @@ class EllipticalBarrier():
         self.eigen = np.array([ 1/(self.shape[0]**2), 1/(self.shape[1]**2) ])
         self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
         self.dH = S @ self.H - self.H @ S
-        self.min_theta_grad = 0.01
+        self.min_theta_grad = 0.05
 
     def update(self, new_pose):
         self.center = new_pose[0:2]

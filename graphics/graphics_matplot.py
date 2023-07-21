@@ -45,6 +45,7 @@ class Plot2DSimulation():
         self.gamma_barrier_logs = logs["gamma_barriers"]
 
         self.num_steps = len(self.time)
+        self.markersize = 2.0
 
         # Initialize plot objects
         self.fig = plt.figure(figsize = self.plot_config["figsize"], constrained_layout=True)
@@ -120,13 +121,13 @@ class Plot2DSimulation():
         self.robot_positions, self.robot_trajectories, self.robot_geometries, self.robot_ellipses, self.virtual_pts, self.arrows = [], [], [], [], [], []
         self.ellipse_points = []
         for k in range(self.num_robots):
-            robot_pos, = self.main_ax.plot([],[],lw=1,color=self.colors[k],marker='o',markersize=4.0)
+            robot_pos, = self.main_ax.plot([],[],lw=1,color=self.colors[k],marker='o',markersize=self.markersize)
             self.robot_positions.append(robot_pos)
 
             ellipse, = self.main_ax.plot([],[],lw=1,color='blue')
             self.robot_ellipses.append(ellipse)
 
-            robot_traj, = self.main_ax.plot([],[],lw=2,color=self.colors[k])
+            robot_traj, = self.main_ax.plot([],[],lw=1.5,color=self.colors[k])
             
             robot_x, robot_y, robot_angle = self.robot_logs[k][0][0], self.robot_logs[k][1][0], self.robot_logs[k][2][0]
             center = self.robots[k].geometry.get_center( (robot_x, robot_y, robot_angle) )
@@ -135,15 +136,15 @@ class Plot2DSimulation():
                                        height=self.robots[k].geometry.width, 
                                        angle=np.rad2deg(robot_angle), rotation_point="xy" )
 
-            self.robot_trajectories.append( robot_traj )
             self.robot_geometries.append( robot_geometry )
+            self.robot_trajectories.append( robot_traj )
 
             self.arrows.append([])
             for j in range(self.num_spline_barriers):
                 i_arrow, = self.main_ax.plot([],[], linestyle='dashed', lw=1.5, alpha=1.0, color=self.colors[k])
                 self.arrows[-1].append( i_arrow )
 
-            ellipse_pt, = self.main_ax.plot([],[],lw=1,color='green',marker='o',markersize=4.0)
+            ellipse_pt, = self.main_ax.plot([],[],lw=1,color='green',marker='o',markersize=self.markersize)
             self.ellipse_points.append(ellipse_pt)
 
         self.path_graphs = []
@@ -151,12 +152,12 @@ class Plot2DSimulation():
             i_graph, = self.main_ax.plot([],[], linestyle='dashed', lw=0.8, alpha=0.8, color=self.colors[k])
             self.path_graphs.append( i_graph )
 
-            virtual_pt,  = self.main_ax.plot([],[],lw=1,color='red',marker='o',markersize=4.0)
+            virtual_pt,  = self.main_ax.plot([],[],lw=1,color='red',marker='o',markersize=self.markersize)
             self.virtual_pts.append(virtual_pt)
 
         self.barrier_graphs = []
         for k in range(self.num_spline_barriers):
-            i_graph, = self.main_ax.plot([],[], lw=1.5, alpha=1.0, color='r')
+            i_graph, = self.main_ax.plot([],[], lw=1.0, alpha=1.0, color='r')
             self.barrier_graphs.append( i_graph )
 
     def init(self):
@@ -256,7 +257,7 @@ class Plot2DSimulation():
                 self.virtual_pts[k].set_data(pos[0], pos[1])
 
         # Add artists
-        graphical_elements = self.robot_positions + self.robot_trajectories + self.robot_geometries + self.path_graphs + self.barrier_graphs + self.virtual_pts
+        graphical_elements = self.robot_positions + self.robot_geometries + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
         graphical_elements += self.robot_ellipses
         graphical_elements += self.ellipse_points
