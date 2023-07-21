@@ -1,5 +1,4 @@
 import numpy as np
-
 from common import Rect, EllipticalBarrier, BarrierGrid
 from dynamic_systems import Unicycle
 from controllers import PFController, SplinePath, SplineBarrier
@@ -58,8 +57,15 @@ xoffsets, yoffsets = [-5, 5], [-5, 5]
 xlimits = (np.array(xlimits) + np.array(xoffsets)).tolist()
 ylimits = (np.array(ylimits) + np.array(yoffsets)).tolist()
 plot_config = {
+    "figsize": (5,5),
+    "gridspec": (1,1,1),
+    "widthratios": [1],
+    "heightratios": [1],
     "axeslim": tuple(xlimits+ylimits),
-    "path_length": 100, 
+    "path_length": 10,
     "numpoints": 1000,
-    "fps": 60
+    "drawlevel": False,
+    "resolution": 50,
+    "fps":120,
+    "pad":2.0
 }

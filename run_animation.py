@@ -17,12 +17,11 @@ except IOError:
 
 print('Animating simulation...')
 plotSim = Plot2DSimulation( sim.robots, sim.barrier_grid, sim.paths, sim.spline_barriers, logs, plot_config = sim.plot_config )
+plotSim.main_ax.set_title("Traffic Control using CLF-CBFs", fontsize=12)
 
 initial_time = 0
 if len(sys.argv) > 2:
     initial_time = float(sys.argv[2])
 plotSim.animate(initial_time)
-
-# plotSim.animation.save(simulation_file + ".mp4", writer=anim.FFMpegWriter(fps=30, codec='h264'), dpi=100)
 
 plt.show()
