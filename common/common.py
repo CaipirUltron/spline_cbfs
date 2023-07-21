@@ -60,6 +60,7 @@ class EllipticalBarrier():
         self.eigen = np.array([ 1/(self.shape[0]**2), 1/(self.shape[1]**2) ])
         self.H = rot(self.orientation) @ np.diag(self.eigen) @ rot(self.orientation).T
         self.dH = S @ self.H - self.H @ S
+        self.min_theta_grad = 0.01
 
     def update(self, new_pose):
         self.center = new_pose[0:2]
@@ -82,7 +83,6 @@ class EllipticalBarrier():
         '''
         a = self.shape[0]
         b = self.shape[1]
-
         grad_pos = np.eye(2)
         grad_theta = np.array([ -a*np.cos(gamma)*np.sin(self.orientation) - b*np.sin(gamma)*np.cos(self.orientation),
                                  a*np.cos(gamma)*np.cos(self.orientation) - b*np.sin(gamma)*np.sin(self.orientation) ]).reshape(2,1)
@@ -94,6 +94,9 @@ class EllipticalBarrier():
     def gradient(self, value):
         grad_hij_pi = (-(value - self.center) @ self.H).reshape(2)
         grad_hij_thetai = 0.5 * ( value - self.center ).T @ self.dH @ ( value - self.center )
+        
+        if np.abs(grad_hij_thetai) < self.min_theta_grad:
+            grad_hij_thetai = self.min_theta_grad * np.sign(grad_hij_thetai)
         return np.hstack([ grad_hij_pi, grad_hij_thetai ])
     
     def contour_plot(self, plot_obj, resolution=50):
@@ -334,15 +337,18 @@ class BarrierGrid():
                 if i == j:
                     continue
                 if i == id:
-                    self.pencils[id,j].update( self.pencils[id,j]._A, self.barriers[id].H )
+                    self.pencils[i,j].update( self.pencils[i,j]._A, self.barriers[id].H )
                 if j == id:
-                    self.pencils[i,id].update( self.barriers[id].H, self.pencils[i,id]._B )
+                    self.pencils[i,j].update( self.barriers[id].H, self.pencils[i,j]._B )
 
-    def compute_barrier(self, idi, idj):
+    def compute_barrier(self, idi, idj, pose_i, pose_j):
         '''
         Computes vehicle barrier (between barriers[id1] and barriers[id2] ).
         Returns: i) barrier value, ii) barrier gradient, iii) optimal point on barrier_obj ellipse
         '''
+        self.update_barrier(idi, pose_i)
+        self.update_barrier(idj, pose_j)
+
         barrieri = self.barriers[idi]
         barrierj = self.barriers[idj]
 
@@ -354,6 +360,7 @@ class BarrierGrid():
         pci = np.array(barrieri.center)
         pcj = np.array(barrierj.center)
         wij = Hi @ ( pcj - pci )
+
         lambda_sols, v_sols = self.pencils[idi,idj].solve_system( wij )
         num_sols = len( lambda_sols )
 
@@ -370,9 +377,6 @@ class BarrierGrid():
         # Filters solutions with positive cost and lambda (geometrically incorrect)
         index_sol = np.argmin(costs)
 
-        # print("Costs = " + str(costs))
-        # print("Lambda solutions = " + str(lambda_sols))
-
         opt_ellipse = delta_sols[:,index_sol]
 
         barrier_value = barrieri.function(opt_ellipse)
@@ -388,13 +392,10 @@ class BarrierGrid():
         gamma_costs = np.array([ cost_gamma(results1.x[0]), cost_gamma(results2.x[0]) ])
         results = np.array([ results1.x[0], results2.x[0] ])
 
-        if np.all(gamma_costs > ZERO_ACCURACY):
-            print(gamma_costs)
-
         gamma_sol = results[ np.argmin(gamma_costs) ]
 
-        if np.linalg.norm(opt_ellipse - barrierj.ellipse(gamma_sol)) > ZERO_ACCURACY:
-            print( opt_ellipse - barrierj.ellipse(gamma_sol) )
+        if np.min(gamma_costs) > ZERO_ACCURACY:
+            print(np.min(gamma_costs))
 
         # Neighbor barrier
         ellipse_jac = barrierj.ellipse_jacobian(gamma_sol)

@@ -7,7 +7,7 @@ from simulations.load_splines import *
 
 ########################################### Configure and create robots ####################################################
 pos_offset = 1.0
-robot1 = Unicycle( initial_state=[ -3.0, 7.0, -np.pi/6 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.5))
+robot1 = Unicycle( initial_state=[ -3.0, 6.0, -np.pi/6 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.5))
 robot2 = Unicycle( initial_state=[ -9.0, 10.0, -np.pi/4 ], initial_control=np.zeros(2), geometry=Rect([3.0, 1.5], 1.5))
 
 robots = [ robot1, robot2 ]
@@ -42,11 +42,11 @@ sample_time = 0.004
 
 controller_parameters1 = { 
     "sample_time": sample_time, "path": paths[0], "path_speed": 6.0,
-    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.001, "connectivity": connectivity[0] }
+    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta1": 1.0, "beta2": 5.0, "kappa": 0.001, "connectivity": connectivity[0] }
 
 controller_parameters2 = { 
     "sample_time": sample_time, "path": paths[1], "path_speed": 8.0,
-    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta": 10.0, "kappa": 0.001, "connectivity": connectivity[1] }
+    "q1": 1.0, "q2": 10.0, "alpha": 50.0, "beta1": 1.0, "beta2": 5.0, "kappa": 0.001, "connectivity": connectivity[1] }
 
 # Create QP controller and graphical simulation.
 controller1 = PFController(robots, barrier_grid, spline_barriers, controller_parameters1, id=0)
@@ -61,5 +61,5 @@ plot_config = {
     "axeslim": tuple(xlimits+ylimits),
     "path_length": 100, 
     "numpoints": 1000,
-    "fps": 120
+    "fps": 60
 }

@@ -164,17 +164,17 @@ class Plot2DSimulation():
 
             self.ax.add_patch(self.robot_geometries[k])
 
-            self.barrier_grid.update_barrier( k, self.robots[k].get_center_state() )
             self.barrier_grid.barriers[k].contour_plot( self.robot_ellipses[k] )
+            pck = self.robots[k].get_center_state()
 
             for j in range(self.num_robots):
                 if k != j:
                     robot_x, robot_y, robot_angle = self.robot_logs[j][0][i], self.robot_logs[j][1][i], self.robot_logs[j][2][i]
                     pose = [robot_x, robot_y, robot_angle]
                     self.robots[j].set_state(pose)
-                    self.barrier_grid.update_barrier( j, self.robots[j].get_center_state() )
-                    h, grad_i_h, grad_j_h, ellipse_pt = self.barrier_grid.compute_barrier( k, j )
-                    
+                    pcj = self.robots[j].get_center_state()
+                    h, grad_i_h, grad_j_h, ellipse_pt = self.barrier_grid.compute_barrier( k, j, pck, pcj )
+            
                     # self.time_text.set_text("barrier " + str([k, j]) + " = " + str(h))
                     self.ellipse_points[j].set_data(ellipse_pt[0], ellipse_pt[1])
 

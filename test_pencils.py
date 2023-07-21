@@ -6,13 +6,19 @@ barrier1 = EllipticalBarrier(shape=[2,1])
 barrier2 = EllipticalBarrier(shape=[2,1])
 
 barrier_grid = BarrierGrid( barriers = [barrier1, barrier2] )
-barrier_grid.update_barrier(0, np.random.rand(3)-0.5)
-barrier_grid.update_barrier(1, 10*np.random.rand(3)-5)
+# barrier_grid.update_barrier(0, np.random.rand(3)-0.5)
+# barrier_grid.update_barrier(1, 10*np.random.rand(3)-5)
+
+barrier_grid.update_barrier(0, [ 2.2, 1, 0 ])
+barrier_grid.update_barrier(1, [ 2, 3, 0 ])
+
 num_barriers = len(barrier_grid.barriers)
 
 barrier_value, barrier_gradient, neighbor_barrier_gradient, opt_ellipse = barrier_grid.compute_barrier(0,1)
 
 print("Barrier value = " + str(barrier_value))
+print("Barrier gradient = " + str(barrier_gradient))
+
 print("Ellipse point = " + str(opt_ellipse))
 
 fig = plt.figure()

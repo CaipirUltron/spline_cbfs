@@ -1,7 +1,6 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
-from common import LinearMatrixPencil, BarrierGrid
 import copy
 
 def sat(u, limits):
@@ -46,32 +45,24 @@ class PFController:
             self.spline_barriers.append( copy.deepcopy(lane) )
 
         # Initialize control parameters
-        self.q1, self.q2 = parameters["q1"], parameters["q2"]
-        self.alpha, self.beta, self.kappa = parameters["alpha"], parameters["beta"], parameters["kappa"]
+        self.alpha, self.beta1, self.beta2, self.kappa = parameters["alpha"], parameters["beta1"], parameters["beta2"], parameters["kappa"]
         self.desired_path_speed = parameters["path_speed"]
 
         # QP for path stabilization
         self.QP1_dim = self.control_dim + 1
-        P1 = np.diag(np.hstack([ np.ones(self.control_dim), self.q1 ]))
-        q1 = np.zeros(self.QP1_dim)
-        self.QP1 = QuadraticProgram(P=P1, q=q1)
+        P1 = np.diag(np.hstack([ np.ones(self.control_dim), parameters["q1"] ]))
+        self.QP1 = QuadraticProgram(P=P1, q=np.zeros(self.QP1_dim))
         self.u_ctrl = np.zeros(self.control_dim)
-
-        # QP for path dynamics control
-        self.QP2_dim = 1 + 1
-        self.P2 = np.diag(np.hstack([ 1.0, self.q2 ]))
-        q2 = np.hstack([ -self.desired_path_speed, 0.0 ])
-        self.QP2 = QuadraticProgram(P=self.P2, q=q2)
-        self.dgamma = 0.0
 
         # Additional parameters for trasient control
         self.toggle_threshold = np.min( self.barrier_grid.barriers[self.id].shape )
+        self.Lgh_threshold = 0.001
 
         # Filter
         self.ellipse_pt = np.zeros(2)
         self.h = 0.0
         self.Lfh = 0.0
-        self.Lgh = np.ones(self.control_dim)
+        self.Lgh = np.zeros(self.control_dim)
 
     def set_path_speed(self, vd):
         '''
@@ -115,7 +106,7 @@ class PFController:
         QP1_sol = self.QP1.get_solution()
 
         if not QP1_sol is None:
-            self.u_ctrl = QP1_sol[0:self.control_dim,]
+            self.u_ctrl = QP1_sol[0:self.control_dim]
 
         # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-10*np.pi, 10*np.pi]) ])
         # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), self.u_ctrl[1] ])
@@ -123,17 +114,18 @@ class PFController:
         control = self.u_ctrl
 
         gamma = self.path.get_path_state()
-        xd = self.path.get_path_point(gamma)
-        dxd = self.path.get_path_gradient(gamma)
+        xd = self.path.get_path_point( gamma )
+        dxd = self.path.get_path_gradient( gamma )
+
         tilde_x = self.vehicle.get_state()[0:2] - xd
         if np.linalg.norm(tilde_x) >= self.toggle_threshold:
             eta_e = -tilde_x.dot( dxd )
             self.dgamma = - self.kappa * sat(eta_e, limits=[-10.0,10.0])
         else:
-            self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
+            self.dgamma = self.desired_path_speed/np.linalg.norm( dxd )
         
         # self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-        
+
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
 
@@ -165,11 +157,11 @@ class PFController:
 
         # Lie derivatives
         if type(self.vehicle == Unicycle): 
-            LfV = grad_V.dot( f[0:2] - dxd*dgamma )
-            LgV = g[0:2,0:2].T.dot(grad_V)
+            LfV = grad_V @ ( f[:2] - dxd*dgamma )
+            LgV = grad_V @ g[:2,:2]
         else:
-            LfV = grad_V.dot( f - dxd*dgamma )
-            LgV = g.T.dot(grad_V)
+            LfV = grad_V @ ( f - dxd*dgamma )
+            LgV = grad_V @ g
         
         # Stabilization CBF contraints
         a_clf = np.hstack( [ LgV, -1.0 ])
@@ -184,7 +176,6 @@ class PFController:
         # Affine system dynamics
         gc = self.vehicle.get_gc()
         center_state = self.vehicle.get_center_state()
-        self.barrier_grid.update_barrier(self.id, center_state)
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
@@ -192,24 +183,20 @@ class PFController:
             if id == self.id:
                 continue
 
-            center_state_neighbor = self.vehicles[id].get_center_state()
-            self.barrier_grid.update_barrier(id, center_state_neighbor)
+            neighbor_vehicle = self.vehicles[id]
+            gc_neighbor = neighbor_vehicle.get_gc()
 
-            gc_neighbor = self.vehicles[id].get_gc()
-            self.h, grad_i_h, grad_j_h, new_ellipse_pt = self.barrier_grid.compute_barrier(self.id, id)
-            self.Lfh = grad_j_h.T @ gc_neighbor @ self.vehicles[id].get_control()
-            self.Lgh = -( grad_i_h.T @ gc )
+            center_state_neighbor = neighbor_vehicle.get_center_state()
+            self.h, grad_i_h, grad_j_h, el_pt = self.barrier_grid.compute_barrier(self.id, id, center_state, center_state_neighbor)
 
-            # self.Lfh = 0.0
-
-            # if id == 0:
-            #     print("Gradient = " + str(grad_j_h))
+            self.Lfh = ( grad_j_h @ gc_neighbor ) @ neighbor_vehicle.get_control()
+            self.Lgh = ( grad_i_h @ gc )
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
-            a_cbf_k_list[0:self.control_dim] = self.Lgh.tolist()
+            a_cbf_k_list[0:self.control_dim] = (-self.Lgh).tolist()
             a_cbf.append(a_cbf_k_list)
-            b_cbf.append( self.beta * self.h + self.Lfh )
+            b_cbf.append( self.beta1 * self.h + self.Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
@@ -227,13 +214,13 @@ class PFController:
             h, grad_h, _, _ = spline_barrier.compute_barrier( self.barrier_grid.barriers[self.id] )
 
             Lfh = 0.0
-            Lgh = (-gc.T @ grad_h).reshape(self.control_dim)
+            Lgh = ( grad_h @ gc )
 
             # Adds to the CBF constraints
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
-            a_cbf_k_list[0:self.control_dim] = Lgh.tolist()
+            a_cbf_k_list[0:self.control_dim] = (-Lgh).tolist()
             a_cbf.append(a_cbf_k_list)
-            b_cbf.append( self.beta * h + Lfh )
+            b_cbf.append( self.beta2 * h + Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)

@@ -15,19 +15,15 @@ for step in range(0, num_steps):
     # Simulation time
     t = step*sim_module.sample_time
 
-    # os.system('clear')
-    # print("Simulating instant t = " + str(float(f'{t:.2f}')) + " s")
+    os.system('clear')
+    print("Simulating instant t = " + str(float(f'{t:.2f}')) + " s")
     time.append( t )
-
 
     # CPF controller for the robots
     robot_controls = []
     for k in range(len(sim_module.robots)):
         u = sim_module.controllers[k].get_control()
         robot_controls.append(u)
-        # print("Robot " + str(k) + " = " + str( sim_module.robots[k].get_state() ))
-
-        # sim_module.paths[k] = sim_module.controllers[k].get_path()
 
     # Updates agent states
     for k in range(len(sim_module.robots)):
