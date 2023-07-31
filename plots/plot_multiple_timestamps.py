@@ -35,7 +35,7 @@ configuration = {
 # Figure 1 ------------------------------------------------------------------------------------
 
 plotSim = Plot2DSimulation( sim.robots, sim.barrier_grid, sim.paths, sim.spline_barriers, logs, plot_config = configuration )
-plotSim.fig.suptitle("Safe Autonomous Navigation using CLF-CBF-based Controller", fontsize=16)
+plotSim.fig.suptitle("Safe Autonomous Navigation using a CLF-CBF-based Controller", fontsize=16)
 plotSim.fig.tight_layout(pad=configuration["pad"])
 
 # Plot 221
@@ -62,7 +62,7 @@ plt.savefig("trajectories.eps", format='eps', transparent=True)
 
 # Figure 2 ------------------------------------------------------------------------------------
 
-fig = plt.figure(figsize = configuration["figsize"], constrained_layout=True)
+fig = plt.figure(constrained_layout=True)
 time = logs["time"]
 max_time = 10
 
@@ -70,9 +70,17 @@ num_robots = len(sim.robots)
 ax_state, ax_control = [], []
 for k in range(num_robots):
     robot_number = k+1
+    gamma = logs["gamma"][k]
+
     state_x = logs["robots"][k][0]
     state_y = logs["robots"][k][1]
-    all_states = np.hstack([state_x, state_y])
+
+    error_x, error_y = [], []
+    for i in range(len(gamma)):
+        pt = sim.paths[k].get_path_point( gamma[i] )
+        error_x.append( state_x[i] - pt[0] )
+        error_y.append( state_y[i] - pt[1] )
+    all_errors = np.hstack([error_x, error_y])
 
     control_v = logs["control"][k][0]
     control_w = logs["control"][k][1]
@@ -80,22 +88,22 @@ for k in range(num_robots):
 
     ax_state.append( fig.add_subplot(int(str(num_robots)+"2"+str(robot_number+k))) )
     # ax_state[-1].set_aspect('equal', adjustable='box')
-    ax_state[-1].set_title('Robot '+str(robot_number)+' state', fontsize=font_size)
-    ax_state[-1].plot(time, state_x, "--", label='$x [m]$', linewidth=2, markersize=10)
-    ax_state[-1].plot(time, state_y, "--", label='$y [m]$', linewidth=2, markersize=10)
-    ax_state[-1].legend(fontsize=14, loc='upper right')
+    ax_state[-1].set_title('Vehicle '+str(robot_number)+' path following error', fontsize=font_size)
+    ax_state[-1].plot(time, error_x, "--", label='$e_{i,x} [m]$', linewidth=2, markersize=10)
+    ax_state[-1].plot(time, error_y, "--", label='$e_{i,y} [m]$', linewidth=2, markersize=10)
+    ax_state[-1].legend(fontsize=11, loc='upper right')
     ax_state[-1].set_xlim(0, max_time)
-    ax_state[-1].set_ylim(np.min(all_states)-1, np.max(all_states)+1)
+    ax_state[-1].set_ylim(np.min(all_errors)-1, np.max(all_errors)+1)
     if k == num_robots - 1:
         ax_state[-1].set_xlabel('Time [s]', fontsize=14)
     plt.grid()
 
     ax_control.append( fig.add_subplot(int(str(num_robots)+"2"+str(robot_number+k+1))) )
     # ax_control[-1].set_aspect('equal', adjustable='box')
-    ax_control[-1].set_title('Robot '+str(robot_number)+' control', fontsize=font_size)
+    ax_control[-1].set_title('Vehicle '+str(robot_number)+' control', fontsize=font_size)
     ax_control[-1].plot(time, control_v, "--", label='$v [m/s]$', linewidth=2, markersize=10)
     ax_control[-1].plot(time, control_w, "--", label='$\omega [rad/s]$', linewidth=2, markersize=10)
-    ax_control[-1].legend(fontsize=14, loc='upper right')
+    ax_control[-1].legend(fontsize=11, loc='lower right')
     ax_control[-1].set_xlim(0, max_time)
     ax_control[-1].set_ylim(np.min(all_controls)-1, np.max(all_controls)+1)
     if k == num_robots - 1:

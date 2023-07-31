@@ -19,6 +19,7 @@ print('Animating simulation...')
 plotSim = Plot2DSimulation( sim.robots, sim.barrier_grid, sim.paths, sim.spline_barriers, logs, plot_config = sim.plot_config )
 plotSim.main_ax.set_title("Traffic Control using CLF-CBFs", fontsize=12)
 
+
 initial_time = 0
 if len(sys.argv) > 2:
     initial_time = float(sys.argv[2])

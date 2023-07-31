@@ -199,13 +199,14 @@ class Plot2DSimulation():
         graphical_elements += self.ellipse_points
         for k in range(self.num_robots):
             graphical_elements += self.arrows[k]
-        
+
         return graphical_elements
 
     def update(self, i):
         '''
         Update function for the animation.
         '''
+        
         # Update simulation time graphics
         current_time = np.around(self.time[i], decimals = 2)
         self.time_text.set_text("Time = " + str(current_time) + "s")

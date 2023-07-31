@@ -28,6 +28,8 @@ for path_param in path_params:
 robots[0].set_state( np.hstack([ recommended_init_positions[0], np.pi/4 ]) )
 robots[1].set_state( np.hstack([ recommended_init_positions[1], np.pi/4 ]) )
 
+print(recommended_init_positions)
+
 radius = 1.0
 
 spline_barriers = []
