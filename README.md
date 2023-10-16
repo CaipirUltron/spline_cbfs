@@ -44,6 +44,7 @@ $ python3 edit_spline.py simulationX splineY
   - Create another connectivity element at the line [14](https://github.com/gandradeng/spline_cbfs/blob/7538ee0b9ca8082b2aa1eeda8b5982a17ac5bee0/simulations/simulation1/simulation.py#L14). Note that you should determine, by adding a different column, witch other vehicles the agent creates barriers;
   - Crete another *controller_paramenterN* dictionare , after line [51](https://github.com/gandradeng/spline_cbfs/blob/7538ee0b9ca8082b2aa1eeda8b5982a17ac5bee0/simulations/simulation1/simulation.py#L51), setting the previous connectivity element on the parameters;
   - Crete another *controllerN* object, after line [54](https://github.com/gandradeng/spline_cbfs/blob/7538ee0b9ca8082b2aa1eeda8b5982a17ac5bee0/simulations/simulation1/simulation.py#L54), setting the previous *controller_parametersN* created;
+  - Add the created controller object to the list in line [56](https://github.com/gandradeng/spline_cbfs/blob/7538ee0b9ca8082b2aa1eeda8b5982a17ac5bee0/simulations/simulation1/simulation.py#L56C30-L56C41);
   - Run [simulation](https://github.com/gandradeng/spline_cbfs/edit/main/README.md#running-simulation) and [animations](https://github.com/gandradeng/spline_cbfs/edit/main/README.md#running-animation) scripts.
   - **Enjoy!**
 ## Citing the paper: 
