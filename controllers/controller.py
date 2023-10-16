@@ -56,6 +56,7 @@ class PFController:
 
         # Additional parameters for trasient control
         self.toggle_threshold = np.min( self.barrier_grid.barriers[self.id].shape )
+        # self.toggle_threshold = 5
         self.Lgh_threshold = 0.001
 
         # Filter
@@ -108,19 +109,19 @@ class PFController:
         if not QP1_sol is None:
             self.u_ctrl = QP1_sol[0:self.control_dim]
 
-        # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), sat(self.u_ctrl[1], limits=[-10*np.pi, 10*np.pi]) ])
+        control = np.array([sat(self.u_ctrl[0], limits=[-1, 10]), sat(self.u_ctrl[1], limits=[-2*np.pi, 2*np.pi]) ])
         # control = np.array([sat(self.u_ctrl[0], limits=[-10, 10]), self.u_ctrl[1] ])
         # control = np.array([ self.u_ctrl[0], sat(self.u_ctrl[1], limits=[-10*np.pi, 10*np.pi]) ])
-        control = self.u_ctrl
+        # control = self.u_ctrl
 
         gamma = self.path.get_path_state()
         xd = self.path.get_path_point( gamma )
         dxd = self.path.get_path_gradient( gamma )
 
         tilde_x = self.vehicle.get_state()[0:2] - xd
-        if np.linalg.norm(tilde_x) >= self.toggle_threshold:
-            eta_e = -tilde_x.dot( dxd )
-            self.dgamma = - self.kappa * sat(eta_e, limits=[-10.0,10.0])
+        eta_e = tilde_x.dot( dxd )
+        if np.linalg.norm(tilde_x) >= self.toggle_threshold and eta_e < 0:
+            self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm( dxd )
         

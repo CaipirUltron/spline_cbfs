@@ -39,7 +39,7 @@ for barrier_param in barrier_params:
     spline_barriers.append( SplineBarrier( params=barrier_param, init_path_state=[0.0], threshold=radius) )
 
 ############################################# Configure and create controllers #############################################
-sample_time = 0.004
+sample_time = 0.01
 
 controller_parameters1 = { 
     "sample_time": sample_time, "path": paths[0], "path_speed": 6.0,
