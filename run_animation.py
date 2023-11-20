@@ -3,6 +3,7 @@ import json
 import importlib
 import matplotlib.pyplot as plt
 from graphics import Plot2DSimulation
+import matplotlib.animation as anim
 
 # Load simulation file
 simulation_file = sys.argv[1].replace(".json","")
@@ -24,5 +25,9 @@ initial_time = 0
 if len(sys.argv) > 2:
     initial_time = float(sys.argv[2])
 plotSim.animate(initial_time)
+
+# saving to m4 using ffmpeg writer 
+# writervideo = anim.FFMpegWriter(fps=20)
+# plotSim.animation.save('simulation.mp4', writer=writervideo)
 
 plt.show()

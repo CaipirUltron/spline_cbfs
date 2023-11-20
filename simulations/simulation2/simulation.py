@@ -28,6 +28,8 @@ for path_param in path_params:
     paths.append(path)
     recommended_init_positions.append( path.get_path_point(0.0) )
 
+recommended_init_positions[1] = [ -9.0, 3.0 ]
+
 robots[0].set_state( np.hstack([ recommended_init_positions[0], np.pi/4 ]) )
 robots[1].set_state( np.hstack([ recommended_init_positions[1], np.pi/4 ]) )
 robots[2].set_state( np.hstack([ recommended_init_positions[2], np.pi/4 ]) )

@@ -121,7 +121,8 @@ class PFController:
         tilde_x = self.vehicle.get_state()[0:2] - xd
         eta_e = tilde_x.dot( dxd )
         if np.linalg.norm(tilde_x) >= self.toggle_threshold and eta_e < 0:
-            self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
+            # self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
+            self.dgamma = 0.0
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm( dxd )
         
