@@ -1,6 +1,7 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
+from common import rot
 import copy
 
 def sat(u, limits):
@@ -45,6 +46,7 @@ class PFController:
             self.spline_barriers.append( copy.deepcopy(lane) )
 
         # Initialize control parameters
+        self.P = np.diag([10.0, 1.0])
         self.alpha, self.beta1, self.beta2, self.kappa = parameters["alpha"], parameters["beta1"], parameters["beta2"], parameters["kappa"]
         self.desired_path_speed = parameters["path_speed"]
 
@@ -55,7 +57,7 @@ class PFController:
         self.u_ctrl = np.zeros(self.control_dim)
 
         # Additional parameters for trasient control
-        self.toggle_threshold = np.min( self.barrier_grid.barriers[self.id].shape )
+        self.toggle_threshold = np.max( self.barrier_grid.barriers[self.id].shape )
         # self.toggle_threshold = 5
         self.Lgh_threshold = 0.001
 
@@ -121,8 +123,8 @@ class PFController:
         tilde_x = self.vehicle.get_state()[0:2] - xd
         eta_e = tilde_x.dot( dxd )
         if np.linalg.norm(tilde_x) >= self.toggle_threshold and eta_e < 0:
-            # self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
-            self.dgamma = 0.0
+            self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
+            # self.dgamma = 0.0
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm( dxd )
         
@@ -150,17 +152,23 @@ class PFController:
         dgamma = self.path.get_path_control()
 
         # Lyapunov function candidate
-        if type(self.vehicle == Unicycle): 
-            tilde_x = self.vehicle.get_state()[0:2] - xd
+        if type(self.vehicle == Unicycle):
+            pi = self.vehicle.get_state()[0:2]
+            theta = self.vehicle.get_state()[2]
+            R = rot(theta)
+            tilde_x = R.T @ ( pi - xd )
         else:
             tilde_x = self.vehicle.get_state() - xd
-        V = (1/2)*(tilde_x @ tilde_x)
-        grad_V = tilde_x
+
+        V = (1/2)*(tilde_x @ self.P @ tilde_x)
+        grad_V = tilde_x @ self.P
 
         # Lie derivatives
-        if type(self.vehicle == Unicycle): 
-            LfV = grad_V @ ( f[:2] - dxd*dgamma )
-            LgV = grad_V @ g[:2,:2]
+        if type(self.vehicle == Unicycle):
+            LfV = grad_V @ R.T @ ( - dxd*dgamma )
+            bar_g = g[:2,:2]
+            bar_g[:,1] += np.array([[0, 1],[-1, 0]]) @ ( pi - xd )
+            LgV = grad_V @ R.T @ bar_g
         else:
             LfV = grad_V @ ( f - dxd*dgamma )
             LgV = grad_V @ g

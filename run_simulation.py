@@ -6,7 +6,7 @@ simulation_config = sys.argv[1].replace(".json","")
 sim_module = importlib.import_module("simulations."+simulation_config+".simulation", package=None)
 
 # Simulation loop -------------------------------------------------------------------
-T = 15
+T = 12
 num_steps = int(T/sim_module.sample_time)
 time = []
 print('Running simulation...')
