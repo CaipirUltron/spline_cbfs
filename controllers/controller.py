@@ -1,27 +1,15 @@
 import numpy as np
 from quadratic_program import QuadraticProgram
 from dynamic_systems import Unicycle
-from common import rot
+from common import rot, sat
 import copy
-
-def sat(u, limits):
-    '''
-    Scalar saturation.
-    '''
-    min = limits[0]
-    max = limits[1]
-    if u > max:
-        return max
-    if u < min:
-        return min
-    return u
 
 
 class PFController:
     '''
     This class implements a simple path following controller.
     '''
-    def __init__(self, vehicles, barrier_grid, spline_barriers, parameters, id):
+    def __init__(self, vehicles, barrier_grid, spline_barriers, parameters, id, supervisor):
 
         self.id = id
         self.path = parameters["path"]
@@ -32,6 +20,10 @@ class PFController:
         self.connectivity = parameters["connectivity"]
         self.num_neighbors = len(self.connectivity)
         self.num_vehicles = self.num_neighbors + 1
+
+        # Priority initialization
+        self.supervisor = supervisor
+        self.priority_log = []
 
         self.vehicle = self.vehicles[self.id]
         self.state_dim = self.vehicle.n
@@ -46,7 +38,7 @@ class PFController:
             self.spline_barriers.append( copy.deepcopy(lane) )
 
         # Initialize control parameters
-        self.P = np.diag([10.0, 1.0])
+        self.P = np.diag([5.0, 1.0])
         self.alpha, self.beta1, self.beta2, self.kappa = parameters["alpha"], parameters["beta1"], parameters["beta2"], parameters["kappa"]
         self.desired_path_speed = parameters["path_speed"]
 
@@ -58,12 +50,10 @@ class PFController:
 
         # Additional parameters for trasient control
         self.toggle_threshold = np.max( self.barrier_grid.barriers[self.id].shape )
-        # self.toggle_threshold = 5
         self.Lgh_threshold = 0.001
 
         # Filter
         self.ellipse_pt = np.zeros(2)
-        self.h = 0.0
         self.Lfh = 0.0
         self.Lgh = np.zeros(self.control_dim)
 
@@ -84,6 +74,8 @@ class PFController:
         '''
         Computes the QP-CPF control.
         '''
+        self.supervisor.update()
+
         # Constraints for QP1
         a_clf, b_clf = self.get_clf_constraint()
 
@@ -100,9 +92,6 @@ class PFController:
 
         A1 = np.vstack([ a_clf, a_vehicle_cbf, a_lane_cbf ])
         b1 = np.hstack([ b_clf, b_vehicle_cbf, b_lane_cbf ])
-
-        # A1 = np.vstack([ a_clf, a_vehicle_cbf ])
-        # b1 = np.hstack([ b_clf, b_vehicle_cbf ])
 
         # Solve QP1 and get vehicle control
         self.QP1.set_inequality_constraints(A1, b1)
@@ -124,14 +113,12 @@ class PFController:
         eta_e = tilde_x.dot( dxd )
         if np.linalg.norm(tilde_x) >= self.toggle_threshold and eta_e < 0:
             self.dgamma = - sat(eta_e, limits=[-self.kappa,0.0]) * gamma
-            # self.dgamma = 0.0
         else:
             self.dgamma = self.desired_path_speed/np.linalg.norm( dxd )
         
-        # self.dgamma = self.desired_path_speed/np.linalg.norm(dxd)
-
         # Updates path dynamics
         self.path.update(self.dgamma, self.ctrl_dt)
+        self.priority_log.append( self.supervisor.get_priorities()[self.id] )
 
         return control
 
@@ -186,6 +173,7 @@ class PFController:
         # Affine system dynamics
         gc = self.vehicle.get_gc()
         center_state = self.vehicle.get_center_state()
+        priorities = self.supervisor.get_priorities()
 
         # Neighbour barriers for QP1
         a_cbf, b_cbf = [], []
@@ -193,11 +181,14 @@ class PFController:
             if id == self.id:
                 continue
 
+            if priorities[self.id] > priorities[id]:
+                continue
+
             neighbor_vehicle = self.vehicles[id]
             gc_neighbor = neighbor_vehicle.get_gc()
 
             center_state_neighbor = neighbor_vehicle.get_center_state()
-            self.h, grad_i_h, grad_j_h, el_pt = self.barrier_grid.compute_barrier(self.id, id, center_state, center_state_neighbor)
+            h, grad_i_h, grad_j_h, el_pt = self.barrier_grid.compute_barrier(self.id, id, center_state, center_state_neighbor)
 
             self.Lfh = ( grad_j_h @ gc_neighbor ) @ neighbor_vehicle.get_control()
             self.Lgh = ( grad_i_h @ gc )
@@ -206,7 +197,7 @@ class PFController:
             a_cbf_k_list = [0 for i in range(self.QP1_dim)]
             a_cbf_k_list[0:self.control_dim] = (-self.Lgh).tolist()
             a_cbf.append(a_cbf_k_list)
-            b_cbf.append( self.beta1 * self.h + self.Lfh )
+            b_cbf.append( self.beta1 * h + self.Lfh )
 
         a_cbf = np.array(a_cbf)
         b_cbf = np.array(b_cbf)
@@ -236,3 +227,55 @@ class PFController:
         b_cbf = np.array(b_cbf)
 
         return a_cbf, b_cbf
+
+
+class Supervisor:
+    '''
+    This class implements a simples priority supervisor 
+    '''
+    def __init__(self, paths, initial_priorities=None):
+
+        self.paths = paths
+        self.num_paths = len(self.paths)
+
+        if initial_priorities != None:
+            if len(initial_priorities) != self.num_paths:
+                raise Exception("Number of priorities must match the number of paths")
+            self.priorities = initial_priorities   
+            self.isActive = True
+        else:
+            self.priorities = [ self.num_paths for _ in range(self.num_paths) ]
+            self.isActive = False
+
+        self.update()
+
+    def update(self):
+        '''
+        Updates the priorities based on the relative position of the vehicles
+        '''
+        if self.isActive:
+            pivot_path_index = 0
+            pivot_path = self.paths[pivot_path_index]
+
+            gamma = pivot_path.get_path_state()
+            xd = pivot_path.get_path_point(gamma)
+            dxd = pivot_path.get_path_gradient(gamma)
+            norm_dxd = dxd/np.linalg.norm(dxd)
+
+            path_distances = [ 0.0 for _ in range(self.num_paths) ]
+            for k in range(self.num_paths):
+                path = self.paths[k]
+                if path == pivot_path:
+                    continue
+                path_gamma = path.get_path_state()
+                error = path.get_path_point(path_gamma) - xd
+                path_distances[k] = norm_dxd.T @ error
+
+            indexes = np.argsort(path_distances)
+            self.priorities = [ 0 for _ in range(self.num_paths) ]
+            for k in range(self.num_paths):
+                index = indexes[k]
+                self.priorities[index] = k+1
+
+    def get_priorities(self):
+        return self.priorities

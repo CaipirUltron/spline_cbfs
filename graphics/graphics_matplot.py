@@ -43,6 +43,7 @@ class Plot2DSimulation():
         self.robot_logs = logs["robots"]
         self.gamma_logs = logs["gamma"]
         self.gamma_barrier_logs = logs["gamma_barriers"]
+        self.priority_logs = logs["priorities"]
 
         self.num_steps = len(self.time)
         self.markersize = 2.0
@@ -117,6 +118,7 @@ class Plot2DSimulation():
         Initalize graphical objects.
         '''
         self.time_text = self.main_ax.text(self.plot_config["axeslim"][1]-35, self.plot_config["axeslim"][3]-3, str("Time = "))
+        self.robot_priority_texts = [ self.main_ax.text(0.0, 0.0, str(self.priority_logs[k][0])) for k in range(self.num_robots) ]
 
         self.robot_positions, self.robot_trajectories, self.robot_geometries, self.robot_ellipses, self.virtual_pts, self.arrows = [], [], [], [], [], []
         self.ellipse_points = []
@@ -206,7 +208,6 @@ class Plot2DSimulation():
         '''
         Update function for the animation.
         '''
-        
         # Update simulation time graphics
         current_time = np.around(self.time[i], decimals = 2)
         self.time_text.set_text("Time = " + str(current_time) + "s")
@@ -214,6 +215,8 @@ class Plot2DSimulation():
         # Update robot graphics
         for k in range(self.num_robots):
             self.robot_positions[k].set_data(self.robot_logs[k][0][i], self.robot_logs[k][1][i])
+            self.robot_priority_texts[k].set_position( (self.robot_logs[k][0][i], self.robot_logs[k][1][i]) )
+            self.robot_priority_texts[k].set_text(str(self.priority_logs[k][i]))
 
             xdata, ydata = self.robot_logs[k][0][0:i], self.robot_logs[k][1][0:i]
             self.robot_trajectories[k].set_data(xdata, ydata)
@@ -260,6 +263,7 @@ class Plot2DSimulation():
         # Add artists
         graphical_elements = self.robot_positions + self.robot_geometries + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
+        graphical_elements.append(self.robot_priority_texts)
         graphical_elements += self.robot_ellipses
         graphical_elements += self.ellipse_points
         for k in range(self.num_robots):

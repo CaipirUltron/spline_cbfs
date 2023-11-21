@@ -11,6 +11,19 @@ def rot(angle):
     return np.array([[ np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
 
+def sat(u, limits):
+    '''
+    Scalar saturation.
+    '''
+    min = limits[0]
+    max = limits[1]
+    if u > max:
+        return max
+    if u < min:
+        return min
+    return u
+
+
 class Rect():
     '''
     Simple rectangle.

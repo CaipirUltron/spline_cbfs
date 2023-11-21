@@ -37,13 +37,14 @@ for robot in sim_module.robots:
     robot_logs.append( robot.state_log )
     control_logs.append( robot.control_log )
 
-gamma_logs, v_logs, gamma_barrier_logs = [], [], []
+gamma_logs, v_logs, gamma_barrier_logs, priority_logs = [], [], [], []
 for path in sim_module.paths:
     gamma_logs.append( path.logs["gamma"] )
     v_logs.append( path.logs["dgamma"] )
 
 for controller in sim_module.controllers:
     gamma_barrier_logs.append([])
+    priority_logs.append(controller.priority_log)
     for spline_barrier in controller.spline_barriers:
         gamma_barrier_logs[-1].append( spline_barrier.logs["gamma"] )
 # ----------------------------------------------------------------------------------
@@ -56,7 +57,8 @@ logs = {
     "control": control_logs,
     "gamma": gamma_logs,
     "v_logs": v_logs,
-    "gamma_barriers": gamma_barrier_logs
+    "gamma_barriers": gamma_barrier_logs,
+    "priorities": priority_logs
 }
 
 with open(simulation_config+".json", "w") as file:
