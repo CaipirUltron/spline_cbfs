@@ -197,6 +197,7 @@ class Plot2DSimulation():
 
         graphical_elements = self.robot_positions + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts + self.ellipse_points
         graphical_elements.append(self.time_text)
+        graphical_elements += self.robot_priority_texts
         graphical_elements += self.robot_ellipses
         graphical_elements += self.ellipse_points
         for k in range(self.num_robots):
@@ -263,7 +264,7 @@ class Plot2DSimulation():
         # Add artists
         graphical_elements = self.robot_positions + self.robot_geometries + self.robot_trajectories + self.path_graphs + self.barrier_graphs + self.virtual_pts
         graphical_elements.append(self.time_text)
-        graphical_elements.append(self.robot_priority_texts)
+        graphical_elements += self.robot_priority_texts
         graphical_elements += self.robot_ellipses
         graphical_elements += self.ellipse_points
         for k in range(self.num_robots):
