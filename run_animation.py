@@ -18,8 +18,7 @@ except IOError:
 
 print('Animating simulation...')
 plotSim = Plot2DSimulation( sim.robots, sim.barrier_grid, sim.paths, sim.spline_barriers, logs, plot_config = sim.plot_config )
-plotSim.main_ax.set_title("Traffic Control using CLF-CBFs", fontsize=12)
-
+plotSim.main_ax.set_title("Safe Autonomous Navigation with CLF-CBFs", fontsize=12)
 
 initial_time = 0
 if len(sys.argv) > 2:
@@ -28,6 +27,6 @@ plotSim.animate(initial_time)
 
 # saving to m4 using ffmpeg writer 
 # writervideo = anim.FFMpegWriter(fps=20)
-# plotSim.animation.save('simulation.mp4', writer=writervideo)
+# plotSim.animation.save('3R_sim_priorities.mp4', writer=writervideo)
 
 plt.show()

@@ -231,7 +231,7 @@ class PFController:
 
 class Supervisor:
     '''
-    This class implements a simples priority supervisor 
+    This class implements a simple priority supervisor 
     '''
     def __init__(self, paths, initial_priorities=None):
 

@@ -13,8 +13,8 @@ robot3 = Unicycle( initial_state=[ -9.0,  0.0, 0.0 ], initial_control=np.zeros(2
 robots = [ robot1, robot2, robot3 ]
 
 connectivity = [ [1,2], [0,2], [0,1] ] # full connectivity btw 3 vehicles
-# priorities = [ 1, 2, 3 ]
-priorities = None
+priorities = [ 1, 2, 3 ]
+# priorities = None
 
 barrier1, barrier2, barrier3 = EllipticalBarrier(shape=[2.0, 1.2]), EllipticalBarrier(shape=[2.0, 1.2]), EllipticalBarrier(shape=[2.0, 1.2])
 barrier_grid = BarrierGrid(barriers = [barrier1, barrier2, barrier3])
